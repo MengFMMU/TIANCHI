@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>510</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <item>
+    <widget class="QTableWidget" name="table">
+     <property name="sortingEnabled">
+      <bool>true</bool>
+     </property>
+     <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="verticalHeaderShowSortIndicator" stdset="0">
+      <bool>true</bool>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>seriesuid</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>coordX</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>coordY</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>coordZ</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>diameter_mm</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>filepath</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
