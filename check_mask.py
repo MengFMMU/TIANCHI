@@ -14,6 +14,7 @@ import pandas as pd
 import sys
 import os
 from glob import glob
+from tqdm import tqdm
 
 from docopt import docopt
 
@@ -41,10 +42,10 @@ if __name__ == '__main__':
     tissue_nodules = []
     border_nodules = []
     nb_files = len(npz_files)
-    for i in range(len(npz_files)):
+    for i in tqdm(range(len(npz_files))):
         npz_file = npz_files[i]
-        print('processing %d/%d: %s' % 
-            (i+1, nb_files, npz_file))
+        # print('processing %d/%d: %s' % 
+        #     (i+1, nb_files, npz_file))
         seriesuid = os.path.basename(npz_file).split('.')[0]
         nodules = df[df['seriesuid'] == seriesuid]
 
