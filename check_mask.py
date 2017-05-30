@@ -59,6 +59,7 @@ if __name__ == '__main__':
         spacing = data['spacing']  # in x, y, z order
         img_array = data['data']  # CT array
         mask = data['mask']  # in z, y, x order
+        sx, sy, sz = mask.shape
         mask_ratio = float((mask > 0).sum()) / float(mask.size)
 
         # process each nodule
@@ -72,11 +73,17 @@ if __name__ == '__main__':
             coord_mm = np.array([coordX, coordY, coordZ])
             coord_pixel = ((coord_mm - origin) / spacing).astype(np.int16)
             x, y, z = coord_pixel
+            if min(x, y, z) < 0 or min(sx-1-x, sy-1-y, sz-1-z) < 0:
+                mask_ = -1  # mask type
+                ct_ = 10000  # CT value
+            else:
+                mask_ = mask[x, y, z]
+                ct_ = img_array[x, y, z] 
             nodule_records.append([int(seriesuid.split('-')[-1]),  # patient id
                 coordX, coordY, coordZ,  # nodule coordinates in physical world
                 x, y, z,  # nodule coordinates in array
-                mask[x, y, z],  # mask type
-                img_array[x, y, z],  # CT value 
+                mask_,  # mask type
+                ct_,  # CT value 
                 ])
             if min(x, y, z) < 0:
                 print('ERROR! Negative coordinates, maybe wrong label?')
