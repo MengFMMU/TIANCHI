@@ -160,6 +160,7 @@ if __name__ == '__main__':
         
         segmented_lungs = segment_lung_mask(new_image, False)
         segmented_lungs_filled = segment_lung_mask(new_image, True)
+        nodule_mask0 = segmented_lungs_filled - segmented_lungs
 
         img_gradient = ndimage.gaussian_gradient_magnitude(new_image, sigma=1)
         lung_gradient = img_gradient * segmented_lungs_filled
@@ -200,6 +201,7 @@ if __name__ == '__main__':
             nodule_mask2[j] = mask_slice
 
         nodule_mask = np.zeros_like(nodule_mask1)
+        nodule_mask[nodule_mask0 == 1] = 1
         nodule_mask[nodule_mask1 == 1] = 1
         nodule_mask[nodule_mask2 == 2] = 2
 
