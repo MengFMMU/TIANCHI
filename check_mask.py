@@ -80,16 +80,16 @@ if __name__ == '__main__':
                 mask_ = -1  # out of bound mask
                 ct_ = 10000  # out of bound CT value
             else:
-                mask_ = mask[x-tol:x+tol, y-tol:y+tol, z-tol:z+tol].max()
-                ct_ = img_array[x-tol:x+tol, y-tol:y+tol, z-tol:z+tol].max()
+                mask_ = mask[z-tol:z+tol, y-tol:y+tol, x-tol:x+tol].max()
+                ct_ = img_array[z-tol:z+tol, y-tol:y+tol, x-tol:x+tol].max()
             nodule_records.append([int(seriesuid.split('-')[-1]),  # patient id
                 coordX, coordY, coordZ,  # nodule coordinates in physical world
                 x, y, z,  # nodule coordinates in array
-                diameter,
+                diameter,  # nodule diameter
                 mask_,  # mask type
                 ct_,  # CT value 
-                mask_size,
-                mask_ratio,
+                mask_size,  # mask size in L
+                mask_ratio, 
                 ])
 
     np.savetxt(output, nodule_records, fmt='%05d %7.2f %7.2f %7.2f %5d %5d %5d %5.2f %3d %5d %.2f %.4f')
