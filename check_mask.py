@@ -80,7 +80,7 @@ if __name__ == '__main__':
                 mask_ = -1  # out of bound mask
                 ct_ = 10000  # out of bound CT value
             else:
-                mask_ = mask[x-tol:x+tol, y-tol:y+tol, z-tol:y+tol].max()
+                mask_ = mask[x-tol:x+tol, y-tol:y+tol, z-tol:z+tol].max()
                 ct_ = img_array[x-tol:x+tol, y-tol:y+tol, z-tol:z+tol].max()
             nodule_records.append([int(seriesuid.split('-')[-1]),  # patient id
                 coordX, coordY, coordZ,  # nodule coordinates in physical world
