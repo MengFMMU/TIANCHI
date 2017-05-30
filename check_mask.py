@@ -7,6 +7,7 @@ Usage:
 Options:
     -h --help                                       Show this screen.
     -o --output=output_file                         Output filename of checking results [default: mask.txt].
+    --tol=tol                                       Mask tolerence [default: 1].
 """
 
 import numpy as np 
@@ -26,6 +27,7 @@ if __name__ == '__main__':
     npz_file_or_dir = argv['<npz_file_or_dir>']
     csv_file = argv['<csv_file>']
     output = argv['--output']
+    tol = int(argv['--tol'])
 
     if os.path.isfile(npz_file_or_dir):
         npz_files = [npz_file_or_dir, ]
@@ -61,6 +63,7 @@ if __name__ == '__main__':
         mask = data['mask']  # in z, y, x order
         sx, sy, sz = mask.shape
         mask_ratio = float((mask > 0).sum()) / float(mask.size)
+        mask_size = float((mask > 0).sum()) / 1E6  # mask volume in L
 
         # process each nodule
         for j in range(len(nodules)):
@@ -78,25 +81,14 @@ if __name__ == '__main__':
                 ct_ = 10000  # CT value
             else:
                 mask_ = mask[x, y, z]
-                ct_ = img_array[x, y, z] 
+                ct_ = img_array[x-tol:x+tol, y-tol:y+tol, z-tol:z+tol].max()
             nodule_records.append([int(seriesuid.split('-')[-1]),  # patient id
                 coordX, coordY, coordZ,  # nodule coordinates in physical world
                 x, y, z,  # nodule coordinates in array
                 mask_,  # mask type
                 ct_,  # CT value 
+                mask_ratio,
+                mask_size,
                 ])
-            if min(x, y, z) < 0:
-                print('ERROR! Negative coordinates, maybe wrong label?')
-            elif mask[z, y, x] == 0:
-                missed_nodules.append({'nodule': nodule,
-                    'mask ratio': mask_ratio})
-            elif mask[z, y, x] == 1:
-                tissue_nodules.append({'nodule': nodule,
-                    'mask ratio': mask_ratio})
-            elif mask[z, y, x] == 2:
-                border_nodules.append({'nodule': nodule,
-                    'mask ratio': mask_ratio})
-            else:
-                print('WARNING!!! Something wrong?!')
 
-        np.savetxt(output, nodule_records, fmt='%05d %7.2f %7.2f %7.2f %5d %5d %5d %3d %5d')
+        np.savetxt(output, nodule_records, fmt='%05d %7.2f %7.2f %7.2f %5d %5d %5d %3d %5d %.2f %.4f')
