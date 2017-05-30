@@ -87,8 +87,8 @@ if __name__ == '__main__':
                 x, y, z,  # nodule coordinates in array
                 mask_,  # mask type
                 ct_,  # CT value 
-                mask_ratio,
                 mask_size,
+                mask_ratio,
                 ])
 
         np.savetxt(output, nodule_records, fmt='%05d %7.2f %7.2f %7.2f %5d %5d %5d %3d %5d %.2f %.4f')
