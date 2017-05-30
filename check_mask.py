@@ -77,10 +77,10 @@ if __name__ == '__main__':
             coord_pixel = ((coord_mm - origin) / spacing).astype(np.int16)
             x, y, z = coord_pixel
             if min(x, y, z) < 0 or min(sx-1-x, sy-1-y, sz-1-z) < 0:
-                mask_ = -1  # mask type
-                ct_ = 10000  # CT value
+                mask_ = -1  # out of bound mask
+                ct_ = 10000  # out of bound CT value
             else:
-                mask_ = mask[x-tol:x+tol, y-tol:y+tol, z-tol:y+tol]
+                mask_ = mask[x-tol:x+tol, y-tol:y+tol, z-tol:y+tol].max()
                 ct_ = img_array[x-tol:x+tol, y-tol:y+tol, z-tol:z+tol].max()
             nodule_records.append([int(seriesuid.split('-')[-1]),  # patient id
                 coordX, coordY, coordZ,  # nodule coordinates in physical world
