@@ -85,10 +85,11 @@ if __name__ == '__main__':
             nodule_records.append([int(seriesuid.split('-')[-1]),  # patient id
                 coordX, coordY, coordZ,  # nodule coordinates in physical world
                 x, y, z,  # nodule coordinates in array
+                diameter,
                 mask_,  # mask type
                 ct_,  # CT value 
                 mask_size,
                 mask_ratio,
                 ])
 
-        np.savetxt(output, nodule_records, fmt='%05d %7.2f %7.2f %7.2f %5d %5d %5d %3d %5d %.2f %.4f')
+        np.savetxt(output, nodule_records, fmt='%05d %7.2f %7.2f %7.2f %5d %5d %5d %4.2f %3d %5d %.2f %.4f')
