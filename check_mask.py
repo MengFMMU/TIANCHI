@@ -61,7 +61,7 @@ if __name__ == '__main__':
         spacing = data['spacing']  # in x, y, z order
         img_array = data['data']  # CT array
         mask = data['mask']  # in z, y, x order
-        sx, sy, sz = mask.shape
+        sz, sy, sx = mask.shape
         mask_ratio = float((mask > 0).sum()) / float(mask.size)
         mask_size = float((mask > 0).sum()) / 1E6  # mask volume in L
 
