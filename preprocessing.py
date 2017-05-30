@@ -8,9 +8,10 @@ Options:
     -h --help                                           Show this screen.
     -o --output=output_directory                        Output directory [default: output].
     --threshold=threshold                               Threshold for segmentation [default: -600].
+    --gradient-threshold=g_threshold                    Gradient threshold for nodule mask [default: 50].
     --new-spacing=new_spacing                           New spacing [default: 1,1,1].
-    --tissue-dilation-radius=tissue_dilation_radius     Lung tissue dilation radius [default: 5].
-    --tissue-erosion-radius=tissue_erosion_radius       Lung tissue erosion radius [default: 5].
+    --tissue-dilation-radius=tissue_dilation_radius     Lung tissue dilation radius [default: 10].
+    --tissue-erosion-radius=tissue_erosion_radius       Lung tissue erosion radius [default: 10].
     --border-dilation-radius=border_dilation_radius     Lung border dilation radius [default: 20].
     --border-erosion-radius=border_erosion_radius       Lung border erosion radius [default: 15].
     --border-area-thres=border_area_thres               Border area threhold [default: 400].
@@ -109,7 +110,8 @@ if __name__ == '__main__':
     tissue_dilation_radius = int(argv['--tissue-dilation-radius'])
     tissue_erosion_radius = int(argv['--tissue-erosion-radius'])
     thres = float(argv['--threshold'])  # ROI
-    border_area_thres = float(argv['--border-area-thres'])   # borders has 100 pixels at least
+    g_threshold = float(argv['--gradient-threshold'])
+    border_area_thres = float(argv['--border-area-thres']) 
     min_nodule_area = float(argv['--min-nodule-area'])
 
     # MPI setup
@@ -158,7 +160,10 @@ if __name__ == '__main__':
         
         segmented_lungs = segment_lung_mask(new_image, False)
         segmented_lungs_filled = segment_lung_mask(new_image, True)
-        nodule_mask1 = segmented_lungs_filled - segmented_lungs  # inside lung tissue
+
+        img_gradient = ndimage.gaussian_gradient_magnitude(new_image, sigma=1)
+        lung_gradient = img_gradient * segmented_lungs_filled
+        nodule_mask1 = (lung_gradient > g_threshold) * segmented_lungs_filled
         for j in range(len(nodule_mask1)):
             mask_slice = nodule_mask1[j].copy()
             mask_dilation = dilation(mask_slice, disk(tissue_dilation_radius))
@@ -167,12 +172,13 @@ if __name__ == '__main__':
             vals, counts = np.unique(label, return_counts=True)
             counts = counts[vals != 0]
             vals = vals[vals != 0]
-            for k in range(len(counts)):
+            for k in range(len(counts)):  # remove too small region
                 count = counts[k]
                 val = vals[k]
                 if count < min_nodule_area:
                     mask_erosion[label == val] = 0
             nodule_mask1[j] = mask_erosion
+
 
         nodule_mask2 = np.zeros_like(segmented_lungs)  # lung borders
         for j in range(len(segmented_lungs)):
@@ -189,10 +195,14 @@ if __name__ == '__main__':
             tissue_labels = vals[counts <= border_area_thres]
             for border_label in border_labels:
                 mask_slice[label == border_label] = 2  # mask lung border as 2
-            for tissue_label in tissue_labels:
-                mask_slice[label == tissue_label] = 0  # remove tissue mask
+            # for tissue_label in tissue_labels:
+            #     mask_slice[label == tissue_label] = 0  # remove tissue mask
             nodule_mask2[j] = mask_slice
-        nodule_mask = nodule_mask1 + nodule_mask2
+
+        nodule_mask = np.zeros_like(nodule_mask1)
+        nodule_mask[nodule_mask1 == 1] = 1
+        nodule_mask[nodule_mask2 == 2] = 2
+
         # write to file
         np.savez('%s/%s.npz' % (output_dir, os.path.basename(mhd_file)[:-4]),
                 data=new_image,  # in z, y, x order
