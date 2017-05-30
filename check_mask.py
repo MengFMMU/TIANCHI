@@ -5,7 +5,8 @@ Usage:
     check_mask.py <npz_file_or_dir> <csv_file> [options]
 
 Options:
-    -h --help                                        Show this screen.
+    -h --help                                       Show this screen.
+    -o --output=output_file                         Output filename of checking results [default: mask.txt].
 """
 
 import numpy as np 
@@ -24,9 +25,10 @@ if __name__ == '__main__':
     argv = docopt(__doc__)
     npz_file_or_dir = argv['<npz_file_or_dir>']
     csv_file = argv['<csv_file>']
+    output = argv['--output']
 
     if os.path.isfile(npz_file_or_dir):
-        npz_files = npz_file_or_dir
+        npz_files = [npz_file_or_dir, ]
     elif os.path.isdir(npz_file_or_dir):
         npz_files = glob('%s/*.npz' % npz_file_or_dir)
     else:
@@ -38,10 +40,12 @@ if __name__ == '__main__':
     df = pd.read_csv(csv_file)
 
     # check mask 
+    nodule_records = []
     missed_nodules = []
     tissue_nodules = []
     border_nodules = []
     nb_files = len(npz_files)
+
     for i in tqdm(range(len(npz_files))):
         npz_file = npz_files[i]
         # print('processing %d/%d: %s' % 
@@ -53,6 +57,7 @@ if __name__ == '__main__':
         data = np.load(npz_file)
         origin = data['origin']  # in x, y, z order
         spacing = data['spacing']  # in x, y, z order
+        img_array = data['data']  # CT array
         mask = data['mask']  # in z, y, x order
         mask_ratio = float((mask > 0).sum()) / float(mask.size)
 
@@ -67,6 +72,12 @@ if __name__ == '__main__':
             coord_mm = np.array([coordX, coordY, coordZ])
             coord_pixel = ((coord_mm - origin) / spacing).astype(np.int16)
             x, y, z = coord_pixel
+            nodule_records.append([int(seriesuid.split('-')[-1]),  # patient id
+                coordX, coordY, coordZ,  # nodule coordinates in physical world
+                x, y, z,  # nodule coordinates in array
+                mask[x, y, z],  # mask type
+                img_array[x, y, z],  # CT value 
+                ])
             if min(x, y, z) < 0:
                 print('ERROR! Negative coordinates, maybe wrong label?')
             elif mask[z, y, x] == 0:
@@ -80,3 +91,5 @@ if __name__ == '__main__':
                     'mask ratio': mask_ratio})
             else:
                 print('WARNING!!! Something wrong?!')
+
+        np.savetxt(output, nodule_records, fmt='%05d %7.2f %7.2f %7.2f %5d %5d %5d %3d %5d')
