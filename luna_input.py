@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np 
+import tensorflow as tf
 from scipy.ndimage.interpolation import map_coordinates
 import pandas as pd
 import random
@@ -8,6 +9,7 @@ from math import pi, sin, cos
 
 import time
 
+FLAGS = tf.app.flags.FLAGS
 
 class LUNATrainInput(object):
     """docstring for LUNATrainInput"""
@@ -31,7 +33,8 @@ class LUNATrainInput(object):
                  random_flip=True,
                  exclude_tol=1.2,  # exclude volume when generating negative samples
                  negative_samples_from=3,  # generating negative samples from N CT scans
-                 debug=False):
+                 debug=False,
+                 verbose=False):
         self.data_dir = data_dir
         self.csv_file = csv_file
         self.min_nodule = min_nodule  # in mm
@@ -52,6 +55,7 @@ class LUNATrainInput(object):
         self.exclude_tol = exclude_tol
         self.negative_samples_from = negative_samples_from
         self.debug = debug
+        self.verbose = verbose
 
         # load and parse annotation csv
         df = pd.read_csv(self.csv_file)
@@ -74,11 +78,11 @@ class LUNATrainInput(object):
         sz, sy, sx = image.shape
         size_xy = self.sample_size_xy  # size in x, y dimenstion
         size_hz = self.sample_size_hz  # half size in z dimention
-        if (z-size_hz) < 0 or (z+size_hz) > sz:
+        if (z-size_hz) < 0 or (z+size_hz) > sz-1:
             return None
-        if (x-size_xy/2) < 0 or (x+size_xy/2) > sx:
+        if (x-size_xy/2) < 0 or (x+size_xy/2) > sx-1:
             return None
-        if (y-size_xy/2) < 0 or (y+size_xy/2) > sy:
+        if (y-size_xy/2) < 0 or (y+size_xy/2) > sy-1:
             return None
 
         # data augmentation
@@ -150,10 +154,7 @@ class LUNATrainInput(object):
         nb_tissue_samples = int(self.micro_batch_size * self.sample_ratio[1])
         nb_border_samples = self.micro_batch_size - nb_nodule_samples - nb_tissue_samples
         # positive nodule samples
-        count = 0
-        while True:
-            if count == nb_nodule_samples:
-                break
+        for i in range(nb_nodule_samples):
             # randomly pick a CT record
             idx = random.randint(0, len(self.macro_batch)-1)
             seriesuid, data = self.macro_batch[idx]
@@ -176,18 +177,19 @@ class LUNATrainInput(object):
             coord_pixel = (coord_mm - origin) / spacing
             x, y, z = coord_pixel
             if min(x-r, y-r, z-r) < 0 or min(sx-1-x-r, sy-1-y-r, sz-1-z-r) < 0:
-                print('WARNING!!! Wrong nodule coordinate: %s' % (str(row)))
+                if self.verbose:
+                    print('WARNING!!! Wrong nodule coordinate: %s' % (str(row)))
                 continue
             sample = self.get_sample(image, x, y, z)
             if sample is None:
                 continue
             samples.append(sample)
             labels.append(1)  # 1 for nodule, 0 for else
-            count += 1
 
             if self.debug:
                 print('saving %d sample' % count)
                 np.save('nodule_sample_%d.npy' % count, sample)
+
         # negative tissue samples
         nb_samples_per_scan = int(nb_tissue_samples / self.negative_samples_from)
         last_samples = nb_tissue_samples - (self.negative_samples_from-1) * nb_samples_per_scan
@@ -223,24 +225,21 @@ class LUNATrainInput(object):
             if self.debug:
                 print('sampling from %s' % seriesuid)
             t_z, t_y, t_x = np.where(mask==1)  # tissue mask
-            rvs = np.random.randint(0, t_z.size, nb_samples_per_scan*2)
-            count = 0
+            if i == (self.negative_samples_from-1):
+                rvs = np.random.randint(0, t_z.size, last_samples)
+            else:
+                rvs = np.random.randint(0, t_z.size, nb_samples_per_scan)
             for rv in rvs:
-                if i == (self.negative_samples_from-1):  # last scan
-                    if count == last_samples:
-                        break
-                else:
-                    if count == nb_samples_per_scan:
-                        break
                 z, y, x = t_z[rv], t_y[rv], t_x[rv]
                 sample = self.get_sample(image, x, y, z)
                 if sample is None:
                     continue
                 samples.append(sample)
                 labels.append(0)
-                count += 1
+                # count += 1
                 if self.debug:
                     np.save('tissue_samples_%d_%d.npy' % (i, rv), sample)
+
         # negative border samples
         nb_samples_per_scan = int(nb_border_samples / self.negative_samples_from)
         last_samples = nb_border_samples - (self.negative_samples_from-1) * nb_samples_per_scan
@@ -276,24 +275,29 @@ class LUNATrainInput(object):
             if self.debug:
                 print('sampling from %s' % seriesuid)
             b_z, b_y, b_x = np.where(mask==2)  # border mask
-            rvs = np.random.randint(0, b_z.size, nb_samples_per_scan*2)
-            count = 0
+            if i == (self.negative_samples_from-1):
+                rvs = np.random.randint(0, b_z.size, last_samples)
+            else:
+                rvs = np.random.randint(0, b_z.size, nb_samples_per_scan)
             for rv in rvs:
-                if i == (self.negative_samples_from-1):  # last scan
-                    if count == last_samples:
-                        break
-                else:
-                    if count == nb_samples_per_scan:
-                        break
                 z, y, x = b_z[rv], b_y[rv], b_x[rv]
                 sample = self.get_sample(image, x, y, z)
                 if sample is None:
                     continue
                 samples.append(sample)
                 labels.append(0)
-                count += 1
+
                 if self.debug:
                     np.save('border_samples_%d_%d.npy' % (i, rv), sample)
+        # add some samples if not enough
+        nb_dummy_samples = self.micro_batch_size - len(samples)
+        if self.debug or self.verbose:
+            print('generating %d dummy samples' % nb_dummy_samples)
+        for i in range(nb_dummy_samples):
+            sample = samples[0]
+            dummy_sample = np.ones_like(sample) * -1000
+            samples.append(dummy_sample)  # fake tissue
+            labels.append(0)
 
         self.macro_batch_count += 1
         if self.debug:
@@ -306,7 +310,7 @@ class LUNATrainInput(object):
         return self.micro_batch
 
     def next_macro_batch(self):
-        if self.debug:
+        if self.debug or self.verbose:
             start = time.time()
         macro_batch_size = min(self.macro_batch_size, len(self.seriesuids))
         random_idx = random.sample(range(len(self.seriesuids)), macro_batch_size)
@@ -314,7 +318,7 @@ class LUNATrainInput(object):
         for i in random_idx:
             seriesuid = self.seriesuids[i]
             fname = '%s/%s.npz' % (self.data_dir, seriesuid)
-            if self.debug:
+            if self.debug or self.verbose:
                 print 'loading %s' % fname
             data = np.load(fname)
             spacing = data['spacing']
@@ -326,7 +330,7 @@ class LUNATrainInput(object):
                     'image': image,
                     'mask': mask}
             self.macro_batch.append((seriesuid, data))
-        if self.debug:
+        if self.debug or self.verbose:
             end = time.time()
             time_cost = end - start
             print('time elapsed loading macro batch: %.2f sec' % time_cost)
