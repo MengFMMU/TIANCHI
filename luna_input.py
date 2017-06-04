@@ -14,8 +14,8 @@ class LUNATrainInput(object):
     def __init__(self, 
                  data_dir, 
                  csv_file, 
-                 min_nodule, 
-                 max_nodule,
+                 min_nodule=10, 
+                 max_nodule=100,
                  macro_batch_size=10,
                  macro_batch_reuse=100,
                  micro_batch_size=100,
@@ -71,6 +71,34 @@ class LUNATrainInput(object):
 
     def get_sample(self, image, x, y, z):
         sample = None
+        sz, sy, sx = image.shape
+        size_xy = self.sample_size_xy  # size in x, y dimenstion
+        size_hz = self.sample_size_hz  # half size in z dimention
+        if (z-size_hz) < 0 or (z+size_hz) > sz:
+            return None
+        if (x-size_xy/2) < 0 or (x+size_xy/2) > sx:
+            return None
+        if (y-size_xy/2) < 0 or (y+size_xy/2) > sy:
+            return None
+
+        # data augmentation
+        if self.random_rotation:
+            min_angle = self.rotation_range[0]
+            max_angle = self.rotation_range[1]
+            angle = float(random.randint(min_angle, max_angle)) / 180. * pi
+        if self.random_strentch:
+            min_ratio = self.strentch_range[0]
+            max_ratio = self.strentch_range[1]
+            strentch_ratio_x = random.uniform(min_ratio, max_ratio)
+            strentch_ratio_y = random.uniform(min_ratio, max_ratio)
+        if self.random_shift:
+            min_shift = self.shift_range[0]
+            max_shift = self.shift_range[1]
+            shift_x = random.uniform(min_shift, max_shift)
+            shift_y = random.uniform(min_shift, max_shift)
+        if self.random_flip:
+            flip_rv = random.randint(0, 4)
+
         for offset in range(-self.sample_size_hz, self.sample_size_hz+1):
             slice_y, slice_x = np.indices(image.shape[1:])
             crop_y = slice_y[y-self.sample_size_xy//2:y-self.sample_size_xy//2+self.sample_size_xy,
@@ -79,9 +107,6 @@ class LUNATrainInput(object):
                              x-self.sample_size_xy//2:x-self.sample_size_xy//2+self.sample_size_xy]
             # data augmentation
             if self.random_rotation:
-                min_angle = self.rotation_range[0]
-                max_angle = self.rotation_range[1]
-                angle = float(random.randint(min_angle, max_angle)) / 180. * pi
                 _y = (crop_y - y).reshape(-1)
                 _x = (crop_x - x).reshape(-1)
                 _xy = np.vstack((_x, _y))
@@ -91,27 +116,18 @@ class LUNATrainInput(object):
                 crop_x = np.reshape(_rxy[0], crop_x.shape) + x
                 crop_y = np.reshape(_rxy[1], crop_y.shape) + y
             if self.random_strentch:
-                min_ratio = self.strentch_range[0]
-                max_ratio = self.strentch_range[1]
-                strentch_ratio_x = random.uniform(min_ratio, max_ratio)
-                strentch_ratio_y = random.uniform(min_ratio, max_ratio)
                 crop_x = (crop_x - x) / strentch_ratio_x + x
                 crop_y = (crop_y - y) / strentch_ratio_y + y 
             if self.random_shift:
-                min_shift = self.shift_range[0]
-                max_shift = self.shift_range[1]
-                shift_x = random.uniform(min_shift, max_shift)
-                shift_y = random.uniform(min_shift, max_shift)
                 crop_x += shift_x
                 crop_y += shift_y
 
             sample_slice = image[z+offset,:,:]
             crop_slice = map_coordinates(sample_slice, [crop_y, crop_x], order=0)
             if self.random_flip:
-                rv = random.randint(0, 4)
-                if rv == 2:
+                if flip_rv == 2:
                     crop_slice = np.flipud(crop_slice)
-                elif rv == 3:
+                elif flip_rv == 3:
                     crop_slice == np.fliplr(crop_slice)
             if sample is None:
                 sample = crop_slice[np.newaxis,...]
@@ -134,7 +150,10 @@ class LUNATrainInput(object):
         nb_tissue_samples = int(self.micro_batch_size * self.sample_ratio[1])
         nb_border_samples = self.micro_batch_size - nb_nodule_samples - nb_tissue_samples
         # positive nodule samples
-        for i in range(nb_nodule_samples):
+        count = 0
+        while True:
+            if count == nb_nodule_samples:
+                break
             # randomly pick a CT record
             idx = random.randint(0, len(self.macro_batch)-1)
             seriesuid, data = self.macro_batch[idx]
@@ -153,18 +172,22 @@ class LUNATrainInput(object):
 
             coord_mm = np.asarray([row['coordX'], row['coordY'], row['coordZ']])
             diameter = row['diameter_mm']
+            r = int(diameter / spacing[0] / 2)  # radius in pixel
             coord_pixel = (coord_mm - origin) / spacing
             x, y, z = coord_pixel
-            if min(x, y, z) < 0 or min(sx-1-x, sy-1-y, sz-1-z) < 0:
+            if min(x-r, y-r, z-r) < 0 or min(sx-1-x-r, sy-1-y-r, sz-1-z-r) < 0:
                 print('WARNING!!! Wrong nodule coordinate: %s' % (str(row)))
                 continue
             sample = self.get_sample(image, x, y, z)
+            if sample is None:
+                continue
             samples.append(sample)
             labels.append(1)  # 1 for nodule, 0 for else
+            count += 1
 
             if self.debug:
-                print('saving %d sample' % i)
-                np.save('nodule_sample_%d.npy' % i, sample)
+                print('saving %d sample' % count)
+                np.save('nodule_sample_%d.npy' % count, sample)
         # negative tissue samples
         nb_samples_per_scan = int(nb_tissue_samples / self.negative_samples_from)
         last_samples = nb_tissue_samples - (self.negative_samples_from-1) * nb_samples_per_scan
@@ -200,15 +223,22 @@ class LUNATrainInput(object):
             if self.debug:
                 print('sampling from %s' % seriesuid)
             t_z, t_y, t_x = np.where(mask==1)  # tissue mask
-            if i == (self.negative_samples_from-1):  # last CT scan
-                rvs = np.random.randint(0, t_z.size, last_samples)
-            else:
-                rvs = np.random.randint(0, t_z.size, nb_samples_per_scan)
+            rvs = np.random.randint(0, t_z.size, nb_samples_per_scan*2)
+            count = 0
             for rv in rvs:
+                if i == (self.negative_samples_from-1):  # last scan
+                    if count == last_samples:
+                        break
+                else:
+                    if count == nb_samples_per_scan:
+                        break
                 z, y, x = t_z[rv], t_y[rv], t_x[rv]
                 sample = self.get_sample(image, x, y, z)
+                if sample is None:
+                    continue
                 samples.append(sample)
                 labels.append(0)
+                count += 1
                 if self.debug:
                     np.save('tissue_samples_%d_%d.npy' % (i, rv), sample)
         # negative border samples
@@ -245,16 +275,23 @@ class LUNATrainInput(object):
                     np.save('exclude2_image_%d_%d.npy' % (i, j), exclude_image)
             if self.debug:
                 print('sampling from %s' % seriesuid)
-            t_z, t_y, t_x = np.where(mask==1)  # tissue mask
-            if i == (self.negative_samples_from-1):  # last CT scan
-                rvs = np.random.randint(0, t_z.size, last_samples)
-            else:
-                rvs = np.random.randint(0, t_z.size, nb_samples_per_scan)
+            b_z, b_y, b_x = np.where(mask==2)  # border mask
+            rvs = np.random.randint(0, b_z.size, nb_samples_per_scan*2)
+            count = 0
             for rv in rvs:
-                z, y, x = t_z[rv], t_y[rv], t_x[rv]
+                if i == (self.negative_samples_from-1):  # last scan
+                    if count == last_samples:
+                        break
+                else:
+                    if count == nb_samples_per_scan:
+                        break
+                z, y, x = b_z[rv], b_y[rv], b_x[rv]
                 sample = self.get_sample(image, x, y, z)
+                if sample is None:
+                    continue
                 samples.append(sample)
                 labels.append(0)
+                count += 1
                 if self.debug:
                     np.save('border_samples_%d_%d.npy' % (i, rv), sample)
 
@@ -306,7 +343,10 @@ if __name__ == '__main__':
     train_dir = '/Volumes/SPIDATA/TIANCHI/train_processed'
     csv_file = '/Volumes/SPIDATA/TIANCHI/csv/train/annotations.csv'
     show = True
-    train_input = LUNATrainInput(train_dir, csv_file, 30, 100, debug=False)
+    train_input = LUNATrainInput(train_dir, csv_file, 
+                                 min_nodule=10, 
+                                 max_nodule=100, 
+                                 debug=False)
     data, labels = train_input.next_micro_batch()
     if show:
         import matplotlib.pyplot as plt
