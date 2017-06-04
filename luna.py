@@ -151,12 +151,15 @@ def loss(logits, labels):
         labels=labels, logits=logits, name='cross_entropy_per_example')
     cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
     tf.add_to_collection('losses', cross_entropy_mean)
-
+    tf.summary.scalar(cross_entropy_mean.op.name, cross_entropy_mean)
     # The total loss is defined as the cross entropy loss plus all of the weight
     # decay terms (L2 loss).
     return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
 
 def train(loss):
-    train_op = tf.train.GradientDescentOptimizer(0.01).minimize(loss)
+    train_op = tf.train.GradientDescentOptimizer(0.0001).minimize(loss)
+    # Add histograms for trainable variables.
+    for var in tf.trainable_variables():
+        tf.summary.histogram(var.op.name, var)
     return train_op

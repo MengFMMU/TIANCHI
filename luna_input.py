@@ -197,8 +197,8 @@ class LUNATrainInput(object):
                                           y-dy//2*tol:y+dy//2*tol,
                                           x-dx//2*tol:x+dx//2*tol]
                     np.save('exclude1_image_%d_%d.npy' % (i, j), exclude_image)
-
-            print('sampling from %s' % seriesuid)
+            if self.debug:
+                print('sampling from %s' % seriesuid)
             t_z, t_y, t_x = np.where(mask==1)  # tissue mask
             if i == (self.negative_samples_from-1):  # last CT scan
                 rvs = np.random.randint(0, t_z.size, last_samples)
@@ -243,8 +243,8 @@ class LUNATrainInput(object):
                                           y-dy//2*tol:y+dy//2*tol,
                                           x-dx//2*tol:x+dx//2*tol]
                     np.save('exclude2_image_%d_%d.npy' % (i, j), exclude_image)
-
-            print('sampling from %s' % seriesuid)
+            if self.debug:
+                print('sampling from %s' % seriesuid)
             t_z, t_y, t_x = np.where(mask==1)  # tissue mask
             if i == (self.negative_samples_from-1):  # last CT scan
                 rvs = np.random.randint(0, t_z.size, last_samples)
@@ -277,7 +277,8 @@ class LUNATrainInput(object):
         for i in random_idx:
             seriesuid = self.seriesuids[i]
             fname = '%s/%s.npz' % (self.data_dir, seriesuid)
-            print 'loading %s' % fname
+            if self.debug:
+                print 'loading %s' % fname
             data = np.load(fname)
             spacing = data['spacing']
             origin = data['origin']

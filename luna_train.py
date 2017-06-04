@@ -24,7 +24,7 @@ tf.app.flags.DEFINE_boolean('use_fp16', False,
 tf.app.flags.DEFINE_string('train_dir', 'train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
-tf.app.flags.DEFINE_integer('max_steps', 1000000,
+tf.app.flags.DEFINE_integer('max_steps', 10000,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
@@ -37,6 +37,7 @@ tf.app.flags.DEFINE_integer('image_xy', 48,
 
 
 def train():
+    batch_size = FLAGS.batch_size
     with tf.Graph().as_default():
         global_step = tf.contrib.framework.get_or_create_global_step()
         # input
@@ -53,16 +54,26 @@ def train():
             FP = tf.float16
         else:
             FP = tf.float32
-        images = tf.placeholder(FP, 
-                shape=[None, width_height, width_height, depth], name='image')
-        labels = tf.placeholder(FP, shape=[None, 1], name='label')
+        input_images = tf.placeholder(FP, 
+                shape=[batch_size, depth, width_height, width_height], name='input_image')
+        # Convert from [batch, depth, height, width] to [batch, height, width, depth].
+        images = tf.transpose(input_images, [0, 2, 3, 1], name='image')
+        labels = tf.placeholder(FP, shape=[batch_size], name='label')
+        # Display the training images in the visualizer.
+        _bs, _h, _w, _d = images.get_shape()
+        show_images = tf.slice(images, [0,0,0,int(_d/2)], [int(_bs),int(_h),int(_w),1],
+            name='show_images')
+        tf.summary.image('tf_images', images)
+        tf.summary.image('show_images', show_images)
+
         # inference
         logits = luna.inference(images)
         # train to minimize loss
         loss = luna.loss(logits, labels)
         train_op = luna.train(loss)
 
-        # run graph in session
+        saver = tf.train.Saver()
+
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime."""
             def begin(self):
@@ -87,21 +98,23 @@ def train():
                         'sec/batch)')
                     print (format_str % (datetime.now(), self._step, loss_value,
                                examples_per_sec, sec_per_batch))
-
+        # run graph in session
         with tf.train.MonitoredTrainingSession(
             checkpoint_dir=FLAGS.train_dir,
             hooks=[tf.train.StopAtStepHook(last_step=FLAGS.max_steps),
                tf.train.NanTensorHook(loss),
                _LoggerHook()],
             config=tf.ConfigProto(
-                log_device_placement=FLAGS.log_device_placement)) as mon_sess:
+                log_device_placement=FLAGS.log_device_placement),
+            save_checkpoint_secs=30,
+            save_summaries_steps=30,) as mon_sess:
+            
+            # saver.restore(mon_sess, '%s/model.ckpt-0' % FLAGS.train_dir)
             while not mon_sess.should_stop():
                 batch_images, batch_labels = train_input.next_micro_batch()
-                # Convert from [batch, depth, height, width] to [batch, height, width, depth].
-                batch_images = tf.transpose(images, [0, 2, 3, 1])
-                labels_ = mon_sess.run(labels, feed_dict={
+                _, labels_ = mon_sess.run([train_op, labels], feed_dict={
                     labels: batch_labels,
-                    images: batch_images,
+                    input_images: batch_images,
                     })
                 print(labels_)
 
