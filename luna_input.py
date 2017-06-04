@@ -132,7 +132,7 @@ class LUNATrainInput(object):
 
         nb_nodule_samples = int(self.micro_batch_size * self.sample_ratio[0])
         nb_tissue_samples = int(self.micro_batch_size * self.sample_ratio[1])
-        nb_border_samples = int(self.micro_batch_size * self.sample_ratio[2])
+        nb_border_samples = self.micro_batch_size - nb_nodule_samples - nb_tissue_samples
         # positive nodule samples
         for i in range(nb_nodule_samples):
             # randomly pick a CT record
