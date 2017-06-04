@@ -9,11 +9,14 @@ from luna_input import LUNATrainInput
 
 import time
 from datetime import datetime
+from glob import glob
 
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
 tf.app.flags.DEFINE_integer('batch_size', 128,
+                            """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('macro_batch_size', 10,
                             """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_string('data_dir', '/Volumes/SPIDATA/TIANCHI/train_processed',
                            """Path to the luna training data directory.""")
@@ -40,14 +43,21 @@ tf.app.flags.DEFINE_integer('max_nodule', 100,
                             """Maximum nodule diameter in mm.""")
 tf.app.flags.DEFINE_boolean('shuffle', True,
                             """Whether to shuffle the batch.""")
+tf.app.flags.DEFINE_boolean('load_ckpt', False,
+                            """Whether to load checkpoint file.""")
+tf.app.flags.DEFINE_integer('ckpt_step', 0,
+                            """Global step of ckpt file.""")
 tf.app.flags.DEFINE_boolean('debug', False,
                             """Whether to show detailed information for debugging.""")
+tf.app.flags.DEFINE_boolean('verbose', False,
+                            """Whether to show some detailed information.""")
 
 
 def train():
     batch_size = FLAGS.batch_size
     with tf.Graph().as_default():
-        global_step = tf.contrib.framework.get_or_create_global_step()
+        global_step = tf.Variable(0, name='global_step', trainable=False)
+
         # input
         depth = FLAGS.image_depth
         if depth % 2 == 0:
@@ -59,9 +69,11 @@ def train():
                                      min_nodule=FLAGS.min_nodule, 
                                      max_nodule=FLAGS.max_nodule,
                                      micro_batch_size=FLAGS.batch_size,
+                                     macro_batch_size=FLAGS.macro_batch_size,
                                      sample_size_xy=width_height,
                                      sample_size_hz=hz,
-                                     debug=FLAGS.debug)
+                                     debug=FLAGS.debug,
+                                     verbose=FLAGS.verbose)
         if FLAGS.use_fp16:
             FP = tf.float16
         else:
@@ -79,8 +91,8 @@ def train():
         if depth >= 3:
             rgb_images = tf.slice(images, [0,0,0,0], [int(_bs),int(_h),int(_w),3],
                 name='show_images_0')
-            tf.summary.image('rgb_images', rgb_images)
-        tf.summary.image('image_slices', images_slices)
+            tf.summary.image('rgb_images', rgb_images, max_outputs=10)
+        tf.summary.image('image_slices', images_slices, max_outputs=10)
 
         # inference
         logits = luna.inference(images)
@@ -88,11 +100,16 @@ def train():
         # calculate accuracy
         correct_prediction = tf.equal(tf.argmax(logits,1), labels)
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        error_rate = 1 - accuracy
         tf.summary.scalar('accuracy', accuracy)
+        tf.summary.scalar('error_rate', error_rate)
 
         # train to minimize loss
         loss = luna.loss(logits, labels)
-        train_op = luna.train(loss)
+        train_op = luna.train(loss, global_step)
+
+        # Add ops to save and restore all the variables.
+        saver = tf.train.Saver()
 
         # run graph in session
         with tf.Session() as sess:
@@ -100,6 +117,12 @@ def train():
             sess.run(init)
             merged = tf.summary.merge_all()
             writer = tf.summary.FileWriter('train', sess.graph)
+            
+            if FLAGS.load_ckpt:
+                ckpt_file = '%s/model.ckpt-%d' % \
+                    (FLAGS.train_dir, FLAGS.ckpt_step)
+                print('restore sess with %s' % ckpt_file)
+                saver.restore(sess, ckpt_file)
 
             start = time.time()
             for step in range(FLAGS.max_steps):
@@ -109,7 +132,8 @@ def train():
                     np.random.shuffle(idx)
                     batch_images = batch_images[idx]
                     batch_labels = batch_labels[idx]
-                _, acc, loss_value, summary = sess.run([train_op, accuracy, loss, merged], 
+                _, err, g_step, loss_value, summary = sess.run(
+                    [train_op, error_rate, global_step, loss, merged], 
                     feed_dict={
                         labels: batch_labels,
                         input_images: batch_images,
@@ -119,19 +143,22 @@ def train():
                     duration = end - start
                     examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
                     sec_per_batch = float(duration / FLAGS.log_frequency)
-                    format_str = ('%s: step %d, loss = %.2f , acc = %.4f (%.1f examples/sec; %.3f '
+                    format_str = ('%s: step %d, loss = %.2f, err = %.4f (%.1f examples/sec; %.3f '
                         'sec/batch)')
-                    print (format_str % (datetime.now(), step, loss_value, acc, 
+                    print (format_str % (datetime.now(), g_step, loss_value, err, 
                                examples_per_sec, sec_per_batch))
-                    writer.add_summary(summary, step)
+                    writer.add_summary(summary, g_step)
+                    # Save the variables to disk.
+                    saver.save(sess, '%s/model.ckpt' % FLAGS.train_dir,  global_step=g_step)
                     start = end
 
 
 def main(argv=None):  # pylint: disable=unused-argument
-    if tf.gfile.Exists(FLAGS.train_dir):
-        tf.gfile.DeleteRecursively(FLAGS.train_dir)
+    # if tf.gfile.Exists(FLAGS.train_dir):
+    #     tf.gfile.DeleteRecursively(FLAGS.train_dir)
     tf.gfile.MakeDirs(FLAGS.train_dir)
     train()
+
 
 if __name__ == '__main__':
     tf.app.run()
