@@ -9,8 +9,8 @@ from math import pi, sin, cos
 import time
 
 
-class LUNAInput(object):
-    """docstring for LUNAInput"""
+class LUNATrainInput(object):
+    """docstring for LUNATrainInput"""
     def __init__(self, 
                  data_dir, 
                  csv_file, 
@@ -32,7 +32,6 @@ class LUNAInput(object):
                  exclude_tol=1.2,  # exclude volume when generating negative samples
                  negative_samples_from=3,  # generating negative samples from N CT scans
                  debug=False):
-        super(LUNAInput, self).__init__()
         self.data_dir = data_dir
         self.csv_file = csv_file
         self.min_nodule = min_nodule  # in mm
@@ -264,6 +263,8 @@ class LUNAInput(object):
             end = time.time()
             time_cost = end - start
             print('time elapsed loading micro batch: %.2f sec' % time_cost)
+        samples = np.asarray(samples, dtype=np.float32)
+        labels = np.asarray(labels, dtype=np.int8)
         self.micro_batch = [samples, labels]
         return self.micro_batch
 
@@ -293,12 +294,19 @@ class LUNAInput(object):
             print('time elapsed loading macro batch: %.2f sec' % time_cost)
 
 
+class LUNAEvalInput(object):
+    """docstring for LUNAEvalInput"""
+    def __init__(self, arg):
+        super(LUNAEvalInput, self).__init__()
+        self.arg = arg
+        
+
 if __name__ == '__main__':
     train_dir = '/Volumes/SPIDATA/TIANCHI/train_processed'
     csv_file = '/Volumes/SPIDATA/TIANCHI/csv/train/annotations.csv'
     show = True
-    luna_input = LUNAInput(train_dir, csv_file, 30, 100, debug=False)
-    data, labels = luna_input.next_micro_batch()
+    train_input = LUNATrainInput(train_dir, csv_file, 30, 100, debug=False)
+    data, labels = train_input.next_micro_batch()
     if show:
         import matplotlib.pyplot as plt
 
