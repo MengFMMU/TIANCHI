@@ -157,8 +157,17 @@ def loss(logits, labels):
     return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
 
-def train(loss):
-    train_op = tf.train.GradientDescentOptimizer(0.0001).minimize(loss)
+def train(loss, global_step):
+    # Decay the learning rate exponentially based on the number of steps.
+    lr = tf.train.exponential_decay(0.001,
+                                    global_step,
+                                    10,
+                                    0.999,
+                                    staircase=True)
+    tf.summary.scalar('learning_rate', lr)
+
+    train_op = tf.train.GradientDescentOptimizer(lr).minimize(
+        loss, global_step=global_step)
     # Add histograms for trainable variables.
     for var in tf.trainable_variables():
         tf.summary.histogram(var.op.name, var)
