@@ -22,7 +22,7 @@ tf.app.flags.DEFINE_string('train_dir', 'train',
                            """and checkpoint.""")
 tf.app.flags.DEFINE_integer('max_steps', 1000000,
                             """Number of batches to run.""")
-tf.app.flags.DEFINE_integer('learning_rate', 0.01,
+tf.app.flags.DEFINE_float('learning_rate', 0.01,
                             """Initial learning rate.""")
 tf.app.flags.DEFINE_integer('decay_steps', 10,
                             """Decay step for learning rate.""")
