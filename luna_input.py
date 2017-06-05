@@ -338,10 +338,127 @@ class LUNATrainInput(object):
 
 class LUNAEvalInput(object):
     """docstring for LUNAEvalInput"""
-    def __init__(self, arg):
-        super(LUNAEvalInput, self).__init__()
-        self.arg = arg
+    def __init__(self, 
+                 data_dir,
+                 csv_file,
+                 batch_size=256,
+                 min_nodule=10, 
+                 max_nodule=100,
+                 grid_size=1,  # sampling grid size, 1 is the most conserved
+                 sample_size_xy=48,  # image sample size in x,y dimention
+                 sample_size_hz=1,  # half image sample size in z, actual size = 2 * hz + 1
+                 verbose=False,
+                 debug=False,
+                 ):
+        self.data_dir = data_dir
+        self.csv_file = csv_file
+        self.min_nodule = min_nodule  # in mm
+        self.max_nodule = max_nodule  # in mm
+        self.batch_size = batch_size
+        self.grid_size = grid_size
+        self.sample_size_xy = sample_size_xy
+        self.sample_size_hz = sample_size_hz
+        self.verbose = verbose
+        self.debug = debug
         
+        # load and parse annotation csv
+        df = pd.read_csv(self.csv_file)
+        diameters = df['diameter_mm'].values
+        valid_idx = np.where((diameters > self.min_nodule) * \
+            (diameters < self.max_nodule))[0]
+        valid_rows = df.iloc[valid_idx]
+        valid_seriesuid = valid_rows['seriesuid'].values
+        # remove duplicates
+        self.seriesuids = list(set(valid_seriesuid.tolist()))
+        self.rows = valid_rows
+        if self.verbose:
+            print('find %d CT scan to process: \n%s' % 
+                (len(self.seriesuids), str(self.rows)))
+
+        self.scan_count = 0
+        self.scan = None
+        self.candidate_count = 0
+        self.finished = False
+        self.batch = []
+
+    def next_scan(self):
+        if self.scan_count == len(self.seriesuids):
+            return 
+        else:
+            seriesuid = self.seriesuids[self.scan_count]
+            self.seriesuid = seriesuid
+            fname = '%s/%s.npz' % (self.data_dir, seriesuid)
+            if self.debug or self.verbose:
+                print 'loading %s' % fname
+            data = np.load(fname)
+            spacing = data['spacing']
+            origin = data['origin']
+            image = data['data']
+            mask = data['mask']
+            # resampling mask
+            sz, sy, sx = mask.shape
+            grid_z, grid_y, grid_x = np.meshgrid(
+                np.arange(sz, step=self.grid_size),
+                np.arange(sy, step=self.grid_size),
+                np.arange(sx, step=self.grid_size))
+            grid_mask = np.zeros_like(mask, dtype=np.int8)
+            grid_mask[grid_z, grid_y, grid_x] = 1
+            grid_mask *= (mask>0)
+            zs, ys, xs = np.where(grid_mask>0)
+            self.nb_candidates = zs.size
+            if self.verbose:
+                print('grid search candidates: %d' % grid_mask.sum())
+
+            data = {'spacing': spacing,
+                    'origin': origin,
+                    'image': image,
+                    'mask': mask,
+                    'grid_mask': grid_mask,
+                    'zs': zs,  # candidates coordinates
+                    'ys': ys,
+                    'xs': xs}
+            self.scan = data
+            self.scan_count += 1
+            self.finished = False
+            self.candidate_count = 0
+
+    def next_batch(self):
+        size_xy = self.sample_size_xy
+        size_hz = self.sample_size_hz
+        samples = []
+        coords = []
+
+        sz, sy, sx = self.scan['image'].shape
+        for i in range(self.batch_size):
+            if self.candidate_count >= self.nb_candidates:
+                if self.verbose:
+                    print('making dummy sample')
+                sample = np.ones((size_hz*2+1, size_xy, size_xy)) * -1000  # dummy sample
+                samples.append(sample)
+                coords.append([-1, -1, -1])
+                self.finished = True
+            else:
+                z = self.scan['zs'][self.candidate_count]
+                y = self.scan['ys'][self.candidate_count]
+                x = self.scan['xs'][self.candidate_count]
+                if (z-size_hz) < 0 or (z+size_hz) > (sz-1) \
+                    or (y-size_xy/2) < 0 or (y+size_xy/2) > (sy-1) \
+                    or (x-size_xy/2) < 0 or (x+size_xy/2) > (sx-1):  # volume borders
+                    sample = np.ones((size_hz*2+1, size_xy, size_xy)) * -1000  # dummy sample
+                    if self.verbose:
+                        print('making dummy sample')
+                else:
+                    sample = self.scan['image'][int(z-size_hz):int(z+size_hz+1),
+                        int(y-size_xy/2):int(y-size_xy/2+size_xy),
+                        int(x-size_xy/2):int(x-size_xy/2+size_xy)]
+                samples.append(sample)
+                coords.append([z, y, x])
+            self.candidate_count += 1
+        samples = np.asarray(samples, dtype=np.float32)
+        coords = np.asarray(coords, dtype=np.int64)
+        self.batch = [coords, samples]
+        return self.batch
+
 
 if __name__ == '__main__':
     train_dir = '/Volumes/SPIDATA/TIANCHI/train_processed'
