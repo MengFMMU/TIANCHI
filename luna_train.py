@@ -24,7 +24,7 @@ tf.app.flags.DEFINE_integer('max_steps', 1000000,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_integer('learning_rate', 0.01,
                             """Initial learning rate.""")
-tf.app.flags.DEFINE_integer('decay_step', 10,
+tf.app.flags.DEFINE_integer('decay_steps', 10,
                             """Decay step for learning rate.""")
 tf.app.flags.DEFINE_integer('decay_factor', 0.98,
                             """Decay factor for learning rate.""")
