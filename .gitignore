@@ -1,3 +1,9 @@
+# user folders
+nodule_img/
+output/
+train/
+eval/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
