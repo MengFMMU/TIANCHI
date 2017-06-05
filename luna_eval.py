@@ -10,32 +10,13 @@ import luna
 
 FLAGS = tf.app.flags.FLAGS
 
+# parameters for evaluation
 tf.app.flags.DEFINE_string('eval_dir', 'eval',
-                           """Directory where to write event logs """)
-tf.app.flags.DEFINE_integer('batch_size', 128,
-                            """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_integer('image_depth', 3,
-                            """Image depth (z dimention), odd number is prefered.""")
-tf.app.flags.DEFINE_integer('image_xy', 48,
-                            """Image width and height (x, y dimention).""")
-tf.app.flags.DEFINE_string('data_dir', '/Volumes/SPIDATA/TIANCHI/train_processed',
-                           """Path to the luna training data directory.""")
-tf.app.flags.DEFINE_string('csv_file', '/Volumes/SPIDATA/TIANCHI/csv/train/annotations.csv',
-                           """Path nodule annotation csv file.""")
-tf.app.flags.DEFINE_integer('min_nodule', 10,
-                            """Minimum nodule diameter in mm.""")
-tf.app.flags.DEFINE_integer('max_nodule', 100,
-                            """Maximum nodule diameter in mm.""")
-tf.app.flags.DEFINE_integer('grid_size', 1,
+                           """Directory where to write evaluation results.""")
+tf.app.flags.DEFINE_integer('grid_size', 3,
                             """Grid size in nodule candidates generation.""")
-tf.app.flags.DEFINE_string('ckpt_file', 'train/model.ckpt-852',
+tf.app.flags.DEFINE_string('ckpt_file', None,
                             """Path to checkpoint file.""")
-tf.app.flags.DEFINE_boolean('use_fp16', False,
-                            """Train the model using fp16.""")
-tf.app.flags.DEFINE_boolean('debug', False,
-                            """Whether to show detailed information for debugging.""")
-tf.app.flags.DEFINE_boolean('verbose', False,
-                            """Whether to show some detailed information.""")
 
 
 def eval():

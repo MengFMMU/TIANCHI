@@ -9,7 +9,6 @@ from math import pi, sin, cos
 
 import time
 
-FLAGS = tf.app.flags.FLAGS
 
 class LUNATrainInput(object):
     """docstring for LUNATrainInput"""

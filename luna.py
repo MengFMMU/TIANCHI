@@ -6,6 +6,27 @@ import re
 
 FLAGS = tf.app.flags.FLAGS
 
+tf.app.flags.DEFINE_string('data_dir', '/Volumes/SPIDATA/TIANCHI/train_processed',
+                           """Path to the luna training data directory.""")
+tf.app.flags.DEFINE_string('csv_file', '/Volumes/SPIDATA/TIANCHI/csv/train/annotations.csv',
+                           """Path to nodule annotation csv file.""")
+tf.app.flags.DEFINE_integer('batch_size', 256,
+                            """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('image_depth', 3,
+                            """Image depth (z dimention), odd number is prefered.""")
+tf.app.flags.DEFINE_integer('image_xy', 48,
+                            """Image width and height (x, y dimention).""")
+tf.app.flags.DEFINE_integer('min_nodule', 10,
+                            """Minimum nodule diameter in mm.""")
+tf.app.flags.DEFINE_integer('max_nodule', 100,
+                            """Maximum nodule diameter in mm.""")
+tf.app.flags.DEFINE_boolean('use_fp16', False,
+                            """Train the model using fp16.""")
+tf.app.flags.DEFINE_boolean('debug', False,
+                            """Whether to show detailed information for debugging.""")
+tf.app.flags.DEFINE_boolean('verbose', False,
+                            """Whether to show some detailed information.""")
+
 
 def _activation_summary(x):
     """Helper to create summaries for activations.
@@ -157,15 +178,7 @@ def loss(logits, labels):
     return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
 
-def train(loss, global_step):
-    # Decay the learning rate exponentially based on the number of steps.
-    lr = tf.train.exponential_decay(0.001,
-                                    global_step,
-                                    10,
-                                    0.999,
-                                    staircase=True)
-    tf.summary.scalar('learning_rate', lr)
-
+def train(loss, lr, global_step):
     train_op = tf.train.GradientDescentOptimizer(lr).minimize(
         loss, global_step=global_step)
     # Add histograms for trainable variables.

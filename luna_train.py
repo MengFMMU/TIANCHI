@@ -3,6 +3,7 @@
 
 import tensorflow as tf 
 import numpy as np
+from math import pow
 
 import luna
 from luna_input import LUNATrainInput
@@ -14,43 +15,29 @@ from glob import glob
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_integer('batch_size', 128,
-                            """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_integer('macro_batch_size', 10,
-                            """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_string('data_dir', '/Volumes/SPIDATA/TIANCHI/train_processed',
-                           """Path to the luna training data directory.""")
-tf.app.flags.DEFINE_string('csv_file', '/Volumes/SPIDATA/TIANCHI/csv/train/annotations.csv',
-                           """Path nodule annotation csv file.""")
-tf.app.flags.DEFINE_boolean('use_fp16', False,
-                            """Train the model using fp16.""")
+                            """Number of scan to process in a macro batch.""")
 tf.app.flags.DEFINE_string('train_dir', 'train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 tf.app.flags.DEFINE_integer('max_steps', 1000000,
                             """Number of batches to run.""")
+tf.app.flags.DEFINE_integer('learning_rate', 0.01,
+                            """Initial learning rate.""")
+tf.app.flags.DEFINE_integer('decay_step', 10,
+                            """Decay step for learning rate.""")
+tf.app.flags.DEFINE_integer('decay_factor', 0.98,
+                            """Decay factor for learning rate.""")
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
 tf.app.flags.DEFINE_integer('log_frequency', 5,
                             """How often to log results to the console.""")
-tf.app.flags.DEFINE_integer('image_depth', 3,
-                            """Image depth (z dimention), odd number is prefered.""")
-tf.app.flags.DEFINE_integer('image_xy', 48,
-                            """Image width and height (x, y dimention).""")
-tf.app.flags.DEFINE_integer('min_nodule', 10,
-                            """Minimum nodule diameter in mm.""")
-tf.app.flags.DEFINE_integer('max_nodule', 100,
-                            """Maximum nodule diameter in mm.""")
 tf.app.flags.DEFINE_boolean('shuffle', True,
                             """Whether to shuffle the batch.""")
 tf.app.flags.DEFINE_boolean('load_ckpt', False,
                             """Whether to load checkpoint file.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 0,
                             """Global step of ckpt file.""")
-tf.app.flags.DEFINE_boolean('debug', False,
-                            """Whether to show detailed information for debugging.""")
-tf.app.flags.DEFINE_boolean('verbose', False,
-                            """Whether to show some detailed information.""")
 
 
 def train():
@@ -97,7 +84,7 @@ def train():
         # inference
         logits = luna.inference(images)
 
-        # calculate accuracy
+        # calculate accuracy and error rate
         correct_prediction = tf.equal(tf.argmax(logits,1), labels)
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
         error_rate = 1 - accuracy
@@ -106,7 +93,9 @@ def train():
 
         # train to minimize loss
         loss = luna.loss(logits, labels)
-        train_op = luna.train(loss, global_step)
+        lr = tf.placeholder(tf.float64, name='leaning_rate')
+        tf.summary.scalar('learning_rate', lr)
+        train_op = luna.train(loss, lr, global_step)
 
         # Add ops to save and restore all the variables.
         saver = tf.train.Saver()
@@ -132,11 +121,14 @@ def train():
                     np.random.shuffle(idx)
                     batch_images = batch_images[idx]
                     batch_labels = batch_labels[idx]
+                lr_value = FLAGS.leaning_rate * pow(FLAGS.decay_factor, 
+                    (step / FLAGS.decay_step))
                 _, err, g_step, loss_value, summary = sess.run(
                     [train_op, error_rate, global_step, loss, merged], 
                     feed_dict={
                         labels: batch_labels,
                         input_images: batch_images,
+                        lr: lr_value,
                     })
                 if step % FLAGS.log_frequency == 0 and step != 0:
                     end = time.time()
