@@ -6,9 +6,9 @@ import re
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('data_dir', '/Volumes/SPIDATA/TIANCHI/train_processed',
+tf.app.flags.DEFINE_string('data_dir', None,
                            """Path to the luna training data directory.""")
-tf.app.flags.DEFINE_string('csv_file', '/Volumes/SPIDATA/TIANCHI/csv/train/annotations.csv',
+tf.app.flags.DEFINE_string('csv_file', None,
                            """Path to nodule annotation csv file.""")
 tf.app.flags.DEFINE_integer('batch_size', 256,
                             """Number of images to process in a batch.""")
