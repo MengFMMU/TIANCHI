@@ -8,6 +8,8 @@ import random
 from math import pi, sin, cos
 
 import time
+from glob import glob
+import os
 
 
 class LUNATrainInput(object):
@@ -339,7 +341,7 @@ class LUNAEvalInput(object):
     """docstring for LUNAEvalInput"""
     def __init__(self, 
                  data_dir,
-                 csv_file,
+                 csv_file=None,
                  batch_size=256,
                  min_nodule=10, 
                  max_nodule=100,
@@ -361,18 +363,25 @@ class LUNAEvalInput(object):
         self.debug = debug
         
         # load and parse annotation csv
-        df = pd.read_csv(self.csv_file)
-        diameters = df['diameter_mm'].values
-        valid_idx = np.where((diameters > self.min_nodule) * \
-            (diameters < self.max_nodule))[0]
-        valid_rows = df.iloc[valid_idx]
-        valid_seriesuid = valid_rows['seriesuid'].values
-        # remove duplicates
-        self.seriesuids = list(set(valid_seriesuid.tolist()))
-        self.rows = valid_rows
-        if self.verbose:
-            print('find %d CT scan to process: \n%s' % 
-                (len(self.seriesuids), str(self.rows)))
+        if csv_file is not None:
+            df = pd.read_csv(self.csv_file)
+            diameters = df['diameter_mm'].values
+            valid_idx = np.where((diameters > self.min_nodule) * \
+                (diameters < self.max_nodule))[0]
+            valid_rows = df.iloc[valid_idx]
+            valid_seriesuid = valid_rows['seriesuid'].values
+            # remove duplicates
+            self.seriesuids = list(set(valid_seriesuid.tolist()))
+            self.rows = valid_rows
+            if self.verbose:
+                print('find %d CT scan to process: \n%s' % 
+                    (len(self.seriesuids), str(self.rows)))
+        else:
+            files = glob('%s/*.npz' % self.data_dir)
+            self.seriesuids = []
+            for f in files:
+                basename = os.path.basename(f)
+                self.seriesuids.append(basename.split('.')[0])
 
         self.scan_count = 0
         self.scan = None

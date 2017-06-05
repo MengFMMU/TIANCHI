@@ -29,7 +29,7 @@ def eval():
         hz = int((depth - 1) / 2)
         width_height = FLAGS.image_xy
         eval_input = luna_input.LUNAEvalInput(FLAGS.data_dir, 
-                                     FLAGS.csv_file, 
+                                     csv_file=FLAGS.csv_file,
                                      min_nodule=FLAGS.min_nodule, 
                                      max_nodule=FLAGS.max_nodule,
                                      batch_size=FLAGS.batch_size,
