@@ -121,8 +121,8 @@ def train():
                     np.random.shuffle(idx)
                     batch_images = batch_images[idx]
                     batch_labels = batch_labels[idx]
-                lr_value = FLAGS.leaning_rate * pow(FLAGS.decay_factor, 
-                    (step / FLAGS.decay_step))
+                lr_value = FLAGS.learning_rate * pow(FLAGS.decay_factor, 
+                    (step / FLAGS.decay_steps))
                 _, err, g_step, loss_value, summary = sess.run(
                     [train_op, error_rate, global_step, loss, merged], 
                     feed_dict={
