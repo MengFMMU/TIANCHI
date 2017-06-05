@@ -105,7 +105,7 @@ def train():
             init = tf.global_variables_initializer() # create an operation initializes all the variables
             sess.run(init)
             merged = tf.summary.merge_all()
-            writer = tf.summary.FileWriter('train', sess.graph)
+            writer = tf.summary.FileWriter('%s' % FLAGS.train_dir, sess.graph)
             
             if FLAGS.load_ckpt:
                 ckpt_file = '%s/model.ckpt-%d' % \
