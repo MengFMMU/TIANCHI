@@ -17,6 +17,8 @@ FLAGS = tf.app.flags.FLAGS
 # Basic model parameters.
 tf.app.flags.DEFINE_integer('macro_batch_size', 10,
                             """Number of scan to process in a macro batch.""")
+tf.app.flags.DEFINE_string('sample_ratio', '0.5, 0.3, 0.2',
+                            """Sample ratio of nodule, tissue and border samples""")
 tf.app.flags.DEFINE_string('train_dir', 'train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
@@ -42,6 +44,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', 0,
 
 def train():
     batch_size = FLAGS.batch_size
+    sample_ratio = map(float, FLAGS.sample_ratio.split(','))
     with tf.Graph().as_default():
         global_step = tf.Variable(0, name='global_step', trainable=False)
 
@@ -57,6 +60,7 @@ def train():
                                      max_nodule=FLAGS.max_nodule,
                                      micro_batch_size=FLAGS.batch_size,
                                      macro_batch_size=FLAGS.macro_batch_size,
+                                     sample_ratio=sample_ratio,
                                      sample_size_xy=width_height,
                                      sample_size_hz=hz,
                                      debug=FLAGS.debug,
