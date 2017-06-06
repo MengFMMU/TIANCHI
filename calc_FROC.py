@@ -97,7 +97,10 @@ if __name__ == '__main__':
         if i == 0:
             df_predicted = _df
         else:
-            df_predicted = pd.concat([df_predicted, _df], axis=0, ignore_index=True)
+            if len(_df) > 0:
+                df_predicted = pd.concat([df_predicted, _df], axis=0, ignore_index=True)
+            else:
+                pass
     df_predicted.columns = ['seriesuid', 'coordX', 'coordY', 'coordZ', 'probability']
 
     if csv_file is not None:
