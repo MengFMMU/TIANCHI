@@ -40,11 +40,25 @@ tf.app.flags.DEFINE_boolean('load_ckpt', False,
                             """Whether to load checkpoint file.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 0,
                             """Global step of ckpt file.""")
+tf.app.flags.DEFINE_boolean('save_false_samples', True,
+                            """Whether to save false samples.""")
+tf.app.flags.DEFINE_string('false_sample_dir', 'false_samples',
+                            """Path to save false samples.""")
+tf.app.flags.DEFINE_integer('false_sample_size', 10000,
+                            """Number of false samples per file.""")
 
 
 def train():
     batch_size = FLAGS.batch_size
     sample_ratio = map(float, FLAGS.sample_ratio.split(','))
+    # may save false samples
+    false_sample_images = None
+    false_sample_labels = None
+    false_sample_count = 0
+    false_sample_save_N = 0  # number of false sample files
+    if FLAGS.save_false_samples:
+        tf.gfile.MakeDirs(FLAGS.false_sample_dir)
+
     with tf.Graph().as_default():
         global_step = tf.Variable(0, name='global_step', trainable=False)
 
@@ -139,13 +153,30 @@ def train():
                     batch_labels = batch_labels[idx]
                 lr_value = FLAGS.learning_rate * pow(FLAGS.decay_factor, 
                     (step / FLAGS.decay_steps))
-                _, err, g_step, loss_value, summary = sess.run(
-                    [train_op, error_rate, global_step, loss, merged], 
+                _, err, g_step, loss_value, correctness, summary = sess.run(
+                    [train_op, error_rate, global_step, loss, correct_prediction, merged], 
                     feed_dict={
                         labels: batch_labels,
                         input_images: batch_images,
                         lr: lr_value,
                     })
+                if (~correctness).sum() > 0:  # false sample number > 0
+                    if false_sample_count  == 0:
+                        false_sample_images = batch_images[~correctness]
+                        false_sample_labels = batch_labels[~correctness]
+                    else:
+                        false_sample_images = np.concatenate((
+                            false_sample_images, batch_images[~correctness]), axis=0)
+                        false_sample_labels = np.concatenate((
+                            false_sample_labels, batch_labels[~correctness]), axis=0)
+                    false_sample_count += (~correctness).sum()
+                    if false_sample_count >= FLAGS.false_sample_size:
+                        np.savez('%s/false_samples-%d.npz' % (FLAGS.false_sample_dir, false_sample_save_N), 
+                            false_sample_images=false_sample_images,
+                            false_sample_labels=false_sample_labels)
+                        false_sample_save_N += 1
+                        false_sample_count = 0
+
                 if step % FLAGS.log_frequency == 0 and step != 0:
                     end = time.time()
                     duration = end - start
