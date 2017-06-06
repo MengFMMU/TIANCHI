@@ -91,6 +91,18 @@ def train():
         tf.summary.scalar('accuracy', accuracy)
         tf.summary.scalar('error_rate', error_rate)
 
+        # calculate FP/FN ratio
+        _positive = tf.equal(labels, 1)
+        _negative = tf.equal(labels, 0)
+        TP = tf.reduce_sum(tf.multiply(tf.cast(correct_prediction, tf.float32), 
+                         tf.cast(_positive, tf.float32)))
+        TN = tf.reduce_sum(tf.multiply(tf.cast(correct_prediction, tf.float32),
+                         tf.cast(_negative, tf.float32)))
+        FP_ratio = 1. - tf.divide(TP, tf.reduce_sum(tf.cast(_positive, tf.float32)))
+        FN_ratio = 1. - tf.divide(TN, tf.reduce_sum(tf.cast(_negative, tf.float32)))
+        tf.summary.scalar('FP_ratio', FP_ratio)
+        tf.summary.scalar('FN_ratio', FN_ratio)
+
         # train to minimize loss
         loss = luna.loss(logits, labels)
         lr = tf.placeholder(tf.float64, name='leaning_rate')
