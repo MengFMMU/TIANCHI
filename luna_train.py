@@ -116,8 +116,8 @@ def train():
                          tf.cast(_positive, tf.float32)))
         TN = tf.reduce_sum(tf.multiply(tf.cast(correct_prediction, tf.float32),
                          tf.cast(_negative, tf.float32)))
-        FP_ratio = 1. - tf.divide(TP, tf.reduce_sum(tf.cast(_positive, tf.float32)))
-        FN_ratio = 1. - tf.divide(TN, tf.reduce_sum(tf.cast(_negative, tf.float32)))
+        FN_ratio = 1. - tf.divide(TP, tf.reduce_sum(tf.cast(_positive, tf.float32)))
+        FP_ratio = 1. - tf.divide(TN, tf.reduce_sum(tf.cast(_negative, tf.float32)))
         tf.summary.scalar('FP_ratio', FP_ratio)
         tf.summary.scalar('FN_ratio', FN_ratio)
 
