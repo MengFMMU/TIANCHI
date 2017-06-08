@@ -17,7 +17,7 @@ FLAGS = tf.app.flags.FLAGS
 # Basic model parameters.
 tf.app.flags.DEFINE_integer('macro_batch_size', 10,
                             """Number of scan to process in a macro batch.""")
-tf.app.flags.DEFINE_string('sample_ratio', '0.5, 0.3, 0.2',
+tf.app.flags.DEFINE_string('sample_ratio', '0.5,0.3,0.2,0.0,0.0',
                             """Sample ratio of nodule, tissue and border samples""")
 tf.app.flags.DEFINE_string('train_dir', 'train',
                            """Directory where to write event logs """
@@ -44,8 +44,11 @@ tf.app.flags.DEFINE_boolean('save_false_samples', True,
                             """Whether to save false samples.""")
 tf.app.flags.DEFINE_string('false_sample_dir', 'false_samples',
                             """Path to save false samples.""")
+tf.app.flags.DEFINE_string('false_sample_date', None,
+                            """Date of false samples.""")
 tf.app.flags.DEFINE_integer('false_sample_size', 10000,
                             """Number of false samples per file.""")
+
 
 
 def train():
@@ -76,6 +79,8 @@ def train():
                                      sample_ratio=sample_ratio,
                                      sample_size_xy=width_height,
                                      sample_size_hz=hz,
+                                     false_sample_dir=FLAGS.false_sample_dir,
+                                     false_sample_date=FLAGS.false_sample_date,
                                      debug=FLAGS.debug,
                                      verbose=FLAGS.verbose)
         if FLAGS.use_fp16:

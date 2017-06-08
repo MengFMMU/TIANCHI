@@ -22,7 +22,7 @@ class LUNATrainInput(object):
                  macro_batch_size=10,
                  macro_batch_reuse=100,
                  micro_batch_size=100,
-                 sample_ratio=[0.5,0.3,0.2],
+                 sample_ratio=[0.5,0.3,0.2,0.0,0.0],
                  sample_size_xy=48,  # image sample size in x,y dimention
                  sample_size_hz=1,  # half image sample size in z, actual size = 2 * hz + 1
                  random_rotation=True,
@@ -34,6 +34,8 @@ class LUNATrainInput(object):
                  random_flip=True,
                  exclude_tol=1.2,  # exclude volume when generating negative samples
                  negative_samples_from=3,  # generating negative samples from N CT scans
+                 false_sample_dir=None,
+                 false_sample_date=None,
                  debug=False,
                  verbose=False):
         self.data_dir = data_dir
@@ -55,6 +57,8 @@ class LUNATrainInput(object):
         self.random_flip = random_flip
         self.exclude_tol = exclude_tol
         self.negative_samples_from = negative_samples_from
+        self.false_sample_dir = false_sample_dir
+        self.false_sample_date = false_sample_date
         self.debug = debug
         self.verbose = verbose
 
@@ -153,7 +157,9 @@ class LUNATrainInput(object):
 
         nb_nodule_samples = int(self.micro_batch_size * self.sample_ratio[0])
         nb_tissue_samples = int(self.micro_batch_size * self.sample_ratio[1])
-        nb_border_samples = self.micro_batch_size - nb_nodule_samples - nb_tissue_samples
+        nb_border_samples = int(self.micro_batch_size * self.sample_ratio[2])
+        nb_false_sample_nodules = int(self.micro_batch_size * self.sample_ratio[3])  # false sample nodules, real nodule but classified as nonnodule
+        nb_false_sample_nonnodules = int(self.micro_batch_size * self.sample_ratio[4])  # false sample nonnodules, nonnodule but classified as nodule
         # positive nodule samples
         for i in range(nb_nodule_samples):
             # randomly pick a CT record
@@ -290,6 +296,39 @@ class LUNATrainInput(object):
 
                 if self.debug:
                     np.save('border_samples_%d_%d.npy' % (i, rv), sample)
+
+        # false sample nodules
+        false_sample_files = glob('%s/*-%s*' % 
+            (self.false_sample_dir, self.false_sample_date))
+        rv = random.randrange(0, len(false_sample_files))
+        false_sample_file = false_sample_files[rv]
+        if self.verbose:
+            print('extracting false sample nodules from', false_sample_file)
+        false_sample_data = np.load(false_sample_file)
+        idx = np.where(false_sample_data['false_sample_labels'] == 1)[0]
+        if len(idx) > 0:
+            rvs = np.random.choice(idx, 
+                replace=False, size=min(len(idx), nb_false_sample_nodules))
+            for rv in rvs:
+                samples.append(false_sample_data['false_sample_images'][rv])
+                labels.append(1)
+
+        # false sample nonnodules
+        false_sample_files = glob('%s/*-%s*' % 
+            (self.false_sample_dir, self.false_sample_date))
+        rv = random.randrange(0, len(false_sample_files))
+        false_sample_file = false_sample_files[rv]
+        if self.verbose:
+            print('extracting false sample nonnodules from', false_sample_file)
+        false_sample_data = np.load(false_sample_file)
+        idx = np.where(false_sample_data['false_sample_labels'] == 0)[0]
+        if len(idx) > 0:
+            rvs = np.random.choice(idx, 
+                replace=False, size=min(len(idx), nb_false_sample_nonnodules))
+            for rv in rvs:
+                samples.append(false_sample_data['false_sample_images'][rv])
+                labels.append(0)
+
         # add some samples if not enough
         nb_dummy_samples = self.micro_batch_size - len(samples)
         if self.debug or self.verbose:
