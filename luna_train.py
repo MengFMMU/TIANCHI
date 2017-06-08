@@ -55,7 +55,6 @@ def train():
     false_sample_images = None
     false_sample_labels = None
     false_sample_count = 0
-    false_sample_save_N = 0  # number of false sample files
     if FLAGS.save_false_samples:
         tf.gfile.MakeDirs(FLAGS.false_sample_dir)
 
@@ -171,10 +170,10 @@ def train():
                             false_sample_labels, batch_labels[~correctness]), axis=0)
                     false_sample_count += (~correctness).sum()
                     if false_sample_count >= FLAGS.false_sample_size:
-                        np.savez('%s/false_samples-%d.npz' % (FLAGS.false_sample_dir, false_sample_save_N), 
+                        time_str = time.strftime('%m-%d-%H-%M-%S')
+                        np.savez('%s/false_samples-%s.npz' % (FLAGS.false_sample_dir, time_str), 
                             false_sample_images=false_sample_images,
                             false_sample_labels=false_sample_labels)
-                        false_sample_save_N += 1
                         false_sample_count = 0
 
                 if step % FLAGS.log_frequency == 0 and step != 0:
