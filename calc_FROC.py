@@ -106,6 +106,7 @@ if __name__ == '__main__':
     if csv_file is not None:
         # add FLAG whether the nodule is a real nodule
         FLAGs = []
+        diameters = []
         for i in range(len(df_predicted)):
             row_values = df_predicted.iloc[i].values
             seriesuid = row_values[0]
@@ -125,8 +126,14 @@ if __name__ == '__main__':
                 if dist <= (diameter/2):
                     FLAG = 1
             FLAGs.append(FLAG)
+            if FLAG == 1:
+                diameters.append(diameter)
+            else:
+                diameters.append(0.)
         df4 = pd.DataFrame(FLAGs, columns=['FLAG',])
+        df5 = pd.DataFrame(diameters, columns=['diameter_mm',])
         df_predicted = df_predicted.join(df4)
+        df_predicted = df_predicted.join(df5)
 
     # sort by probability
     df_predicted.sort_values('probability', ascending=False, inplace=True)
@@ -147,7 +154,7 @@ if __name__ == '__main__':
                 else:
                     FP += 1
                 if FP > max_FP:
-                    sensitivitiy = float(TP/nb_nodules)
+                    sensitivitiy = float(TP)/float(nb_nodules)
                     sensitivities.append(sensitivitiy)
                     break
         mean_sensitivity = np.mean(sensitivities)
