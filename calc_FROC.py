@@ -158,5 +158,6 @@ if __name__ == '__main__':
                     sensitivities.append(sensitivitiy)
                     break
         mean_sensitivity = np.mean(sensitivities)
+        print('FROC: ', sensitivities)
         print('mean FROC: %.3f' % mean_sensitivity)
         
