@@ -36,6 +36,7 @@ class LUNATrainInput(object):
                  negative_samples_from=3,  # generating negative samples from N CT scans
                  false_sample_dir=None,
                  false_sample_date=None,
+                 feed_false_samples=False,
                  debug=False,
                  verbose=False):
         self.data_dir = data_dir
@@ -59,6 +60,7 @@ class LUNATrainInput(object):
         self.negative_samples_from = negative_samples_from
         self.false_sample_dir = false_sample_dir
         self.false_sample_date = false_sample_date
+        self.feed_false_samples = feed_false_samples
         self.debug = debug
         self.verbose = verbose
 
@@ -298,36 +300,37 @@ class LUNATrainInput(object):
                     np.save('border_samples_%d_%d.npy' % (i, rv), sample)
 
         # false sample nodules
-        false_sample_files = glob('%s/*-%s*' % 
-            (self.false_sample_dir, self.false_sample_date))
-        rv = random.randrange(0, len(false_sample_files))
-        false_sample_file = false_sample_files[rv]
-        if self.verbose:
-            print('extracting false sample nodules from', false_sample_file)
-        false_sample_data = np.load(false_sample_file)
-        idx = np.where(false_sample_data['false_sample_labels'] == 1)[0]
-        if len(idx) > 0:
-            rvs = np.random.choice(idx, 
-                replace=False, size=min(len(idx), nb_false_sample_nodules))
-            for rv in rvs:
-                samples.append(false_sample_data['false_sample_images'][rv].copy())
-                labels.append(1)
+        if self.feed_false_samples:
+            false_sample_files = glob('%s/*-%s*' % 
+                (self.false_sample_dir, self.false_sample_date))
+            rv = random.randrange(0, len(false_sample_files))
+            false_sample_file = false_sample_files[rv]
+            if self.verbose:
+                print('extracting false sample nodules from', false_sample_file)
+            false_sample_data = np.load(false_sample_file)
+            idx = np.where(false_sample_data['false_sample_labels'] == 1)[0]
+            if len(idx) > 0:
+                rvs = np.random.choice(idx, 
+                    replace=False, size=min(len(idx), nb_false_sample_nodules))
+                for rv in rvs:
+                    samples.append(false_sample_data['false_sample_images'][rv].copy())
+                    labels.append(1)    
 
-        # false sample nonnodules
-        false_sample_files = glob('%s/*-%s*' % 
-            (self.false_sample_dir, self.false_sample_date))
-        rv = random.randrange(0, len(false_sample_files))
-        false_sample_file = false_sample_files[rv]
-        if self.verbose:
-            print('extracting false sample nonnodules from', false_sample_file)
-        false_sample_data = np.load(false_sample_file)
-        idx = np.where(false_sample_data['false_sample_labels'] == 0)[0]
-        if len(idx) > 0:
-            rvs = np.random.choice(idx, 
-                replace=False, size=min(len(idx), nb_false_sample_nonnodules))
-            for rv in rvs:
-                samples.append(false_sample_data['false_sample_images'][rv].copy())
-                labels.append(0)
+            # false sample nonnodules
+            false_sample_files = glob('%s/*-%s*' % 
+                (self.false_sample_dir, self.false_sample_date))
+            rv = random.randrange(0, len(false_sample_files))
+            false_sample_file = false_sample_files[rv]
+            if self.verbose:
+                print('extracting false sample nonnodules from', false_sample_file)
+            false_sample_data = np.load(false_sample_file)
+            idx = np.where(false_sample_data['false_sample_labels'] == 0)[0]
+            if len(idx) > 0:
+                rvs = np.random.choice(idx, 
+                    replace=False, size=min(len(idx), nb_false_sample_nonnodules))
+                for rv in rvs:
+                    samples.append(false_sample_data['false_sample_images'][rv].copy())
+                    labels.append(0)
 
         # add some samples if not enough
         nb_dummy_samples = self.micro_batch_size - len(samples)

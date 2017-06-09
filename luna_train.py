@@ -42,6 +42,8 @@ tf.app.flags.DEFINE_integer('ckpt_step', 0,
                             """Global step of ckpt file.""")
 tf.app.flags.DEFINE_boolean('save_false_samples', True,
                             """Whether to save false samples.""")
+tf.app.flags.DEFINE_boolean('feed_false_samples', False,
+                            """Whether to feed false samples.""")
 tf.app.flags.DEFINE_string('false_sample_dir', 'false_samples',
                             """Path to save false samples.""")
 tf.app.flags.DEFINE_string('false_sample_date', None,
@@ -81,6 +83,7 @@ def train():
                                      sample_size_hz=hz,
                                      false_sample_dir=FLAGS.false_sample_dir,
                                      false_sample_date=FLAGS.false_sample_date,
+                                     feed_false_samples=FLAGS.feed_false_samples,
                                      debug=FLAGS.debug,
                                      verbose=FLAGS.verbose)
         if FLAGS.use_fp16:
