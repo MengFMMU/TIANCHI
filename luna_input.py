@@ -234,20 +234,21 @@ class LUNATrainInput(object):
             if self.debug:
                 print('sampling from %s' % seriesuid)
             t_z, t_y, t_x = np.where(mask==1)  # tissue mask
-            if i == (self.negative_samples_from-1):
-                rvs = np.random.randint(0, t_z.size, last_samples)
-            else:
-                rvs = np.random.randint(0, t_z.size, nb_samples_per_scan)
-            for rv in rvs:
-                z, y, x = t_z[rv], t_y[rv], t_x[rv]
-                sample = self.get_sample(image, x, y, z)
-                if sample is None:
-                    continue
-                samples.append(sample)
-                labels.append(0)
-                # count += 1
-                if self.debug:
-                    np.save('tissue_samples_%d_%d.npy' % (i, rv), sample)
+            if t_z.size > 0:
+                if i == (self.negative_samples_from-1):
+                    rvs = np.random.randint(0, t_z.size, last_samples)
+                else:
+                    rvs = np.random.randint(0, t_z.size, nb_samples_per_scan)
+                for rv in rvs:
+                    z, y, x = t_z[rv], t_y[rv], t_x[rv]
+                    sample = self.get_sample(image, x, y, z)
+                    if sample is None:
+                        continue
+                    samples.append(sample)
+                    labels.append(0)
+                    # count += 1
+                    if self.debug:
+                        np.save('tissue_samples_%d_%d.npy' % (i, rv), sample)
 
         # negative border samples
         nb_samples_per_scan = int(nb_border_samples / self.negative_samples_from)
@@ -284,20 +285,21 @@ class LUNATrainInput(object):
             if self.debug:
                 print('sampling from %s' % seriesuid)
             b_z, b_y, b_x = np.where(mask==2)  # border mask
-            if i == (self.negative_samples_from-1):
-                rvs = np.random.randint(0, b_z.size, last_samples)
-            else:
-                rvs = np.random.randint(0, b_z.size, nb_samples_per_scan)
-            for rv in rvs:
-                z, y, x = b_z[rv], b_y[rv], b_x[rv]
-                sample = self.get_sample(image, x, y, z)
-                if sample is None:
-                    continue
-                samples.append(sample)
-                labels.append(0)
+            if b_z.size > 0:
+                if i == (self.negative_samples_from-1):
+                    rvs = np.random.randint(0, b_z.size, last_samples)
+                else:
+                    rvs = np.random.randint(0, b_z.size, nb_samples_per_scan)
+                for rv in rvs:
+                    z, y, x = b_z[rv], b_y[rv], b_x[rv]
+                    sample = self.get_sample(image, x, y, z)
+                    if sample is None:
+                        continue
+                    samples.append(sample)
+                    labels.append(0)    
 
-                if self.debug:
-                    np.save('border_samples_%d_%d.npy' % (i, rv), sample)
+                    if self.debug:
+                        np.save('border_samples_%d_%d.npy' % (i, rv), sample)
 
         # false sample nodules
         if self.feed_false_samples:
