@@ -32,10 +32,14 @@ if __name__ == '__main__':
     ref_probability = np.zeros(len(ref_df), dtype=np.float)
     pred_flag = np.zeros(len(pred_df), dtype=np.int)
     pred_diameter = np.zeros(len(pred_df), dtype=np.float)
+
     for i in tqdm(range(len(pred_df))):
         pred_row = pred_df.iloc[i]
+        seriesuid = pred_row['seriesuid']
         for j in range(len(ref_df)):
             ref_row = ref_df.iloc[j]
+            if ref_row['seriesuid'] != seriesuid:
+                continue
             diameter = ref_row['diameter_mm']
             probability = pred_row['probability']
             pred_coord = np.array([pred_row['coordX'],
