@@ -310,7 +310,7 @@ class LUNATrainInput(object):
             rvs = np.random.choice(idx, 
                 replace=False, size=min(len(idx), nb_false_sample_nodules))
             for rv in rvs:
-                samples.append(false_sample_data['false_sample_images'][rv])
+                samples.append(false_sample_data['false_sample_images'][rv].copy())
                 labels.append(1)
 
         # false sample nonnodules
@@ -326,7 +326,7 @@ class LUNATrainInput(object):
             rvs = np.random.choice(idx, 
                 replace=False, size=min(len(idx), nb_false_sample_nonnodules))
             for rv in rvs:
-                samples.append(false_sample_data['false_sample_images'][rv])
+                samples.append(false_sample_data['false_sample_images'][rv].copy())
                 labels.append(0)
 
         # add some samples if not enough
