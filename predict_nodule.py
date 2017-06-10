@@ -7,7 +7,7 @@ Usage:
 Options:
     -h --help                                       Show this screen.
     --smooth-sigma=smooth_sigma                     Gaussian sigma used in smoothing [default: 3].
-    --peak-dist=peak_dist                           Peaks are separated by at least min_distance [default: 30].
+    --peak-dist=peak_dist                           Peaks are separated by at least min_distance [default: 10].
     --peak-thres=peak_thres                         Peak threshold [default: 0.1].
     --output=prediction.csv                         Nodule predicted csv file [default: prediction.csv].
 """
