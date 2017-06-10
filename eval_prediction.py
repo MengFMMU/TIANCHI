@@ -59,7 +59,7 @@ if __name__ == '__main__':
     pred_df = pred_df.join(pd.DataFrame(pred_diameter, columns=['diameter']))   
 
     # calculate FROC curve
-    FP_rates = [1./8, 1./4, 1./2, 1., 2., 4]
+    FP_rates = [1./8, 1./4, 1./2, 1., 2., 4., 8., 16., 32., 64., 128., 256]
     sensitivities = []
     for FP_rate in FP_rates:
         TP = 0
@@ -71,14 +71,14 @@ if __name__ == '__main__':
                 TP += 1
             else:
                 FP += 1
-            if FP > max_FP:
+            if FP > max_FP or (i == (len(pred_df)-1)):
                 sensitivitiy = float(TP)/float(nb_nodules)
                 sensitivities.append(sensitivitiy)
                 break
     FROC_df = pd.DataFrame(FP_rates, columns=['FP ratio'])
-    # FROC_df.columns = ['FP ratio']
     FROC_df = FROC_df.join(pd.DataFrame(sensitivities, columns=['sensitivity']))
-    mean_sensitivity = np.mean(sensitivities)
+    sensitivities = np.array(sensitivities)
+    mean_sensitivity = sensitivities[0:7].mean()  # mean value of first 7 sensitivity
     print('mean FROC: %.3f' % mean_sensitivity)
 
     # write to output
