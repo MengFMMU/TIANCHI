@@ -32,6 +32,8 @@ class LUNATrainInput(object):
                  random_shift=True,
                  shift_range=[0, 2],
                  random_flip=True,
+                 random_noise=True,
+                 noise_ratio=[0.8, 1.2],
                  exclude_tol=1.2,  # exclude volume when generating negative samples
                  negative_samples_from=3,  # generating negative samples from N CT scans
                  false_sample_dir=None,
@@ -56,6 +58,8 @@ class LUNATrainInput(object):
         self.random_shift = random_shift
         self.shift_range = shift_range
         self.random_flip = random_flip
+        self.random_noise = random_noise
+        self.noise_ratio = noise_ratio
         self.exclude_tol = exclude_tol
         self.negative_samples_from = negative_samples_from
         self.false_sample_dir = false_sample_dir
@@ -144,6 +148,10 @@ class LUNATrainInput(object):
                 sample = crop_slice[np.newaxis,...]
             else:
                 sample = np.vstack((sample, crop_slice[np.newaxis,...]))
+        if self.random_noise:
+            noise = np.random.uniform(low=self.noise_ratio[0], 
+                high=self.noise_ratio[1], size=sample.shape)
+            sample = (sample.astype(np.float32) * noise.astype(np.float32)).astype(np.int16)
         return sample
 
     def next_micro_batch(self):
