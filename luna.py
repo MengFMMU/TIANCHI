@@ -179,7 +179,7 @@ def loss(logits, labels):
 
 
 def train(loss, lr, global_step):
-    train_op = tf.train.AdamOptimizer(lr).minimize(
+    train_op = tf.train.GradientDescentOptimizer(lr).minimize(
         loss, global_step=global_step)
     # Add histograms for trainable variables.
     for var in tf.trainable_variables():
