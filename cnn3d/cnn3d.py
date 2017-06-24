@@ -18,8 +18,10 @@ tf.app.flags.DEFINE_integer('image_size', 48,
                             """Image size (x,y,z dimention)""")
 tf.app.flags.DEFINE_integer('nb_features', 16,
                             """Number of feature channels in conv layers""")
-tf.app.flags.DEFINE_integer('kernal_size', 3,
+tf.app.flags.DEFINE_integer('conv_kernal_size', 3,
                             """Kernal size in conv layers""")
+tf.app.flags.DEFINE_integer('pool_kernal_size', 3,
+                            """Kernal size in pooling layers""")
 tf.app.flags.DEFINE_integer('min_nodule', 10,
                             """Minimum nodule diameter in mm.""")
 tf.app.flags.DEFINE_integer('max_nodule', 100,
@@ -89,11 +91,12 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
 
 def inference(images):
     n_f = FLAGS.nb_features
-    ks = FLAGS.kernal_size
+    cks = FLAGS.conv_kernal_size
+    pks = FLAGS.pool_kernal_size
     # conv1
     with tf.variable_scope('conv1') as scope:
         kernel = _variable_with_weight_decay('weights',
-                                     shape=[ks, ks, ks, 1, n_f],
+                                     shape=[cks, cks, cks, 1, n_f],
                                      stddev=5e-2,
                                      wd=0.0)
         conv = tf.nn.conv3d(images, kernel, [1, 1, 1, 1, 1], padding='SAME')
@@ -102,13 +105,13 @@ def inference(images):
         conv1 = tf.nn.relu(pre_activation, name=scope.name)
 
     # pool1
-    pool1 = tf.nn.max_pool3d(conv1, ksize=[1, 3, 3, 3, 1], strides=[1, 2, 2, 2, 1], 
-        padding='SAME', name='pool1')
+    pool1 = tf.nn.max_pool3d(conv1, ksize=[1, pks, pks, pks, 1], 
+        strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')
 
     # conv2
     with tf.variable_scope('conv2') as scope:
         kernel = _variable_with_weight_decay('weights',
-                                         shape=[ks, ks, ks, n_f, n_f],
+                                         shape=[cks, cks, cks, n_f, n_f],
                                          stddev=5e-2,
                                          wd=0.0)
         conv = tf.nn.conv3d(pool1, kernel, [1, 1, 1, 1, 1], padding='SAME')
@@ -118,7 +121,7 @@ def inference(images):
         _activation_summary(conv2)
 
     # pool2
-    pool2 = tf.nn.max_pool3d(conv2, ksize=[1, 3, 3, 3, 1],
+    pool2 = tf.nn.max_pool3d(conv2, ksize=[1, pks, pks, pks, 1],
         strides=[1, 2, 2, 2, 1], padding='SAME', name='pool2')
 
     # local3
