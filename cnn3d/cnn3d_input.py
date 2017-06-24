@@ -186,7 +186,7 @@ class CNN3dTrainInput(object):
             if sample is None:
                 continue
             samples[count,:,:,:] = sample
-            labels.append(1)  # 1 for nodule, 0 for else
+            labels[count] = 1  # 1 for nodule, 0 for else
             count += 1
 
             if self.debug:
@@ -222,7 +222,7 @@ class CNN3dTrainInput(object):
             if sample is None:
                 continue
             samples[count,:,:,:] = sample
-            labels.append(0)  # 1 for nodule, 0 for else
+            labels[count] = 0  # 1 for nodule, 0 for else
             count += 1
 
             if self.debug:
