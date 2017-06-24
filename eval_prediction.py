@@ -25,7 +25,14 @@ if __name__ == '__main__':
     nb_scan = int(argv['<nb_scan>'])
     output = argv['--output']
 
-    ref_df = pd.read_csv(ref_csv_file)  
+    ref_df = pd.read_csv(ref_csv_file)
+    ref_coords = np.zeros((len(ref_df), 3))
+    ref_coords[:,0] = ref_df['coordX'].values  
+    ref_coords[:,1] = ref_df['coordY'].values  
+    ref_coords[:,2] = ref_df['coordZ'].values 
+    ref_diameters = ref_df['diameter_mm'].values
+    ref_seriesuids = ref_df['seriesuid'].values
+
     pred_df = pd.read_csv(pred_csv_file)
     nb_nodules = len(ref_df)
 
@@ -33,26 +40,29 @@ if __name__ == '__main__':
     pred_flag = np.zeros(len(pred_df), dtype=np.int)
     pred_diameter = np.zeros(len(pred_df), dtype=np.float)
 
+    found_nodule_idx = []
     for i in tqdm(range(len(pred_df))):
         pred_row = pred_df.iloc[i]
         seriesuid = pred_row['seriesuid']
-        for j in range(len(ref_df)):
-            ref_row = ref_df.iloc[j]
-            if ref_row['seriesuid'] != seriesuid:
-                continue
-            diameter = ref_row['diameter_mm']
-            probability = pred_row['probability']
-            pred_coord = np.array([pred_row['coordX'],
+        idx = np.where(ref_seriesuids == seriesuid)[0]
+
+        pred_coord = np.array([pred_row['coordX'],
                                   pred_row['coordY'],
                                   pred_row['coordZ']])
-            ref_coord = np.array([ref_row['coordX'],
-                                 ref_row['coordY'],
-                                 ref_row['coordZ']])
-            dist = sqrt(((pred_coord - ref_coord)**2.).sum())
-            if dist <= diameter/2:
-                ref_probability[j] = max(ref_probability[j], probability)
-                pred_flag[i] = max(pred_flag[i], 1)
-                pred_diameter[i] = diameter
+        ref_coords_valid = ref_coords[idx]
+        ref_diameters_valid = ref_diameters[idx]
+        dists = np.sqrt(((pred_coord - ref_coords_valid)**2.).sum(axis=1))
+        nodule_idx = idx[np.where(dists <= ref_diameters_valid/2)[0]]
+        if len(nodule_idx) > 0:
+            ref_probability[nodule_idx] = max(pred_row['probability'], 
+                ref_probability[nodule_idx])
+            pred_diameter[i] = ref_diameters[nodule_idx]
+            if nodule_idx in found_nodule_idx:
+                pred_flag[i] = -1
+                print('found duplicate nodule at %ith row' % i)
+            else:
+                pred_flag[i] = 1
+                found_nodule_idx.append(nodule_idx)
 
     ref_df = ref_df.join(pd.DataFrame(ref_probability, columns=['probability']))
     pred_df = pred_df.join(pd.DataFrame(pred_flag, columns=['FLAG']))   
@@ -69,6 +79,8 @@ if __name__ == '__main__':
             FLAG = pred_df.iloc[i]['FLAG']
             if FLAG == 1:  # hit real nodule
                 TP += 1
+            elif FLAG == -1:  # duplicate nodule
+                continue
             else:
                 FP += 1
             if FP > max_FP or (i == (len(pred_df)-1)):
