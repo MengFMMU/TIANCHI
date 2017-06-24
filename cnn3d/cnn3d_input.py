@@ -147,7 +147,9 @@ class CNN3dTrainInput(object):
             self.macro_batch_count = 0
 
         count = 0
-        samples = []
+        # init samples as dummy samples
+        samples = np.ones((self.micro_batch_size,
+            self.sample_size, self.sample_size, self.sample_size)) * -1000
         labels = []
 
         nb_pos_samples = int(self.micro_batch_size * self.sample_ratio[0])
@@ -183,7 +185,7 @@ class CNN3dTrainInput(object):
                 sample_type='P', radius_px=r)
             if sample is None:
                 continue
-            samples.append(sample)
+            samples[count,:,:,:] = sample
             labels.append(1)  # 1 for nodule, 0 for else
             count += 1
 
@@ -219,23 +221,13 @@ class CNN3dTrainInput(object):
                 sample_type='N')
             if sample is None:
                 continue
-            samples.append(sample)
+            samples[count,:,:,:] = sample
             labels.append(0)  # 1 for nodule, 0 for else
             count += 1
 
             if self.debug:
                 print('saving %d sample' % count)
                 np.save('negative_sample_%d.npy' % count, sample)
-
-        # add some samples if not enough
-        nb_dummy_samples = self.micro_batch_size - len(samples)
-        if self.debug or self.verbose:
-            print('generating %d dummy samples' % nb_dummy_samples)
-        for i in range(nb_dummy_samples):
-            sample = samples[0]
-            dummy_sample = np.ones_like(sample) * -1000
-            samples.append(dummy_sample)  # dummy nodule
-            labels.append(0)
 
         self.macro_batch_count += 1
         if self.debug:
