@@ -99,12 +99,12 @@ class CNN3dTrainInput(object):
         flip_rv = random.randint(0, 4)
 
         try:
-            for offset in range(int(-ss_z//2), int(-ss_z//2+ss_z)):
+            for offset in range(int(-ss_z//2), int(-ss_z//2)+ss_z):
                 slice_y, slice_x = np.indices(image.shape[1:])
-                crop_y = slice_y[int(y-ss_y//2):int(y-ss_y//2+ss_y),
-                                 int(x-ss_x//2):int(x-ss_x//2+ss_x)]
-                crop_x = slice_x[int(y-ss_y//2):int(y-ss_y//2+ss_y),
-                                 int(x-ss_x//2):int(x-ss_x//2+ss_x)]
+                crop_y = slice_y[int(y-ss_y//2):int(y-ss_y//2)+ss_y,
+                                 int(x-ss_x//2):int(x-ss_x//2)+ss_x]
+                crop_x = slice_x[int(y-ss_y//2):int(y-ss_y//2)+ss_y,
+                                 int(x-ss_x//2):int(x-ss_x//2)+ss_x]
                 _y = (crop_y - y).reshape(-1)
                 _x = (crop_x - x).reshape(-1)
                 _xy = np.vstack((_x, _y))
