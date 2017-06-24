@@ -44,7 +44,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', 0,
                             """Global step of ckpt file.""")
 
 
-SAMPLE_SIZE = 48
+SAMPLE_SIZE = FLAGS.image_size
 
 
 def train():

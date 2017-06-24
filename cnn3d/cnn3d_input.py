@@ -271,7 +271,7 @@ class CNN3dTrainInput(object):
 if __name__ == '__main__':
     data_dir = '/Volumes/SPIDATA/TIANCHI/train_processed_border-5_gradient-search'
     annotation_file = '/Volumes/SPIDATA/TIANCHI/csv/train/annotations.csv'
-    prediction_file = '/Users/lixuanxuan/Desktop/TIANCHI/train_prediction/train-0608-min-dist_10.csv'
+    prediction_file = '/Users/lixuanxuan/Desktop/TIANCHI/train_prediction/0608/train-0608-min-dist_10.csv'
     show = True
     train_input = CNN3dTrainInput(data_dir, 
                                 annotation_file,
