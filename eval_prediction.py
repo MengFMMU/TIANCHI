@@ -40,7 +40,7 @@ if __name__ == '__main__':
     pred_flag = np.zeros(len(pred_df), dtype=np.int)
     pred_diameter = np.zeros(len(pred_df), dtype=np.float)
 
-    found_nodule_idx = []
+    found_nodule_ids = []
     for i in tqdm(range(len(pred_df))):
         pred_row = pred_df.iloc[i]
         seriesuid = pred_row['seriesuid']
@@ -54,15 +54,16 @@ if __name__ == '__main__':
         dists = np.sqrt(((pred_coord - ref_coords_valid)**2.).sum(axis=1))
         nodule_idx = idx[np.where(dists <= ref_diameters_valid/2)[0]]
         if len(nodule_idx) > 0:
-            ref_probability[nodule_idx] = max(pred_row['probability'], 
-                ref_probability[nodule_idx])
-            pred_diameter[i] = ref_diameters[nodule_idx]
-            if nodule_idx in found_nodule_idx:
+            nodule_id = nodule_idx[0]
+            ref_probability[nodule_id] = max(pred_row['probability'], 
+                ref_probability[nodule_id])
+            pred_diameter[i] = ref_diameters[nodule_id]
+            if nodule_id in found_nodule_ids:
                 pred_flag[i] = -1
                 print('found duplicate nodule at %ith row' % i)
             else:
                 pred_flag[i] = 1
-                found_nodule_idx.append(nodule_idx)
+                found_nodule_ids.append(nodule_id)
 
     ref_df = ref_df.join(pd.DataFrame(ref_probability, columns=['probability']))
     pred_df = pred_df.join(pd.DataFrame(pred_flag, columns=['FLAG']))   
