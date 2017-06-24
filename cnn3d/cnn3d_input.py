@@ -150,7 +150,7 @@ class CNN3dTrainInput(object):
         # init samples as dummy samples
         samples = np.ones((self.micro_batch_size,
             self.sample_size, self.sample_size, self.sample_size)) * -1000
-        labels = []
+        labels = np.zeros(self.micro_batch_size, dtype=np.int16)
 
         nb_pos_samples = int(self.micro_batch_size * self.sample_ratio[0])
         nb_neg_samples = int(self.micro_batch_size * self.sample_ratio[1])
